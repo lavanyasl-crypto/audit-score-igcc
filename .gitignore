@@ -1,0 +1,14 @@
+# Raw/internal data
+daily_igcc_audited.csv
+per_audit_igcc.csv
+store_summary.csv
+Audit response/
+Audit response wide/
+Store IGCC/
+_dom_dump.html
+
+# Scratch artifacts
+shot_*.png
+test_*.py
+check_*.py
+__pycache__/

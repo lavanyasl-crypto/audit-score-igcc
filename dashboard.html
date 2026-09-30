@@ -1,0 +1,432 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Audit Score × IGCC — FnV Analysis</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f4f6fa; --card:#ffffff; --ink:#1a2332; --ink-2:#5a6577; --ink-3:#8b95a7;
+  --line:#e5e9f0; --accent:#2563eb; --accent-soft:#eff4ff;
+  --good:#16a34a; --good-soft:#e8f7ee; --bad:#dc2626; --bad-soft:#fdecec;
+  --warn:#d97706; --warn-soft:#fdf3e3;
+  --r:14px; --shadow:0 1px 3px rgba(16,24,40,.06),0 4px 16px rgba(16,24,40,.06);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--bg);color:var(--ink);font-family:'Inter',system-ui,sans-serif;font-size:14px;line-height:1.45}
+body{padding:20px 22px 60px;max-width:1500px;margin:0 auto}
+h1{font-size:21px;font-weight:800;letter-spacing:-.02em}
+h2{font-size:15px;font-weight:700;letter-spacing:-.01em;margin-bottom:2px}
+.sub{color:var(--ink-2);font-size:12.5px;margin-top:3px}
+header{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end;justify-content:space-between;margin-bottom:18px}
+.pill{display:inline-flex;align-items:center;gap:6px;background:var(--card);border:1px solid var(--line);border-radius:99px;padding:5px 12px;font-size:12px;color:var(--ink-2);font-weight:500}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--good)}
+.grid{display:grid;gap:14px}
+.kpis{grid-template-columns:repeat(auto-fit,minmax(168px,1fr));margin-bottom:14px}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px;box-shadow:var(--shadow)}
+.kpi .label{font-size:11.5px;font-weight:600;color:var(--ink-2);text-transform:uppercase;letter-spacing:.05em}
+.kpi .val{font-size:26px;font-weight:800;letter-spacing:-.03em;margin-top:4px}
+.kpi .delta{font-size:12px;font-weight:600;margin-top:2px}
+.kpi-click{cursor:pointer;transition:border-color .15s,box-shadow .15s}
+.kpi-click:hover{border-color:var(--accent)}
+.kpi-click.active{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft)}
+.up{color:var(--good)} .down{color:var(--bad)} .flat{color:var(--ink-3)}
+.row{display:grid;gap:14px;margin-bottom:14px}
+.row[hidden]{display:none}
+.row-2{grid-template-columns:1fr 1fr}
+.row-3{grid-template-columns:2fr 1fr}
+@media(max-width:900px){.row-2,.row-3{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:16px 18px;box-shadow:var(--shadow);min-width:0}
+.card-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:10px;flex-wrap:wrap}
+.note{font-size:11.5px;color:var(--ink-3)}
+.controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+select{font:inherit;font-size:12.5px;padding:6px 10px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink);cursor:pointer}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-2);font-weight:600;text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap;cursor:pointer;user-select:none}
+th:hover{color:var(--accent)}
+td{padding:8px 10px;border-bottom:1px solid #f0f3f7;white-space:nowrap}
+tr:hover td{background:#f8fafd}
+.num{text-align:right;font-variant-numeric:tabular-nums}
+.badge{display:inline-block;padding:2px 9px;border-radius:99px;font-size:11px;font-weight:600}
+.b-good{background:var(--good-soft);color:var(--good)} .b-bad{background:var(--bad-soft);color:var(--bad)}
+.b-warn{background:var(--warn-soft);color:var(--warn)} .b-mid{background:var(--accent-soft);color:var(--accent)}
+.tbl-scroll{max-height:420px;overflow:auto;border-radius:10px;border:1px solid var(--line)}
+.tbl-scroll thead th{position:sticky;top:0;background:var(--card);z-index:1}
+.insight{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border-radius:10px;font-size:12.5px;margin-bottom:8px}
+.i-good{background:var(--good-soft)} .i-bad{background:var(--bad-soft)} .i-warn{background:var(--warn-soft)} .i-mid{background:var(--accent-soft)}
+.insight b{font-weight:700}
+.footer-note{margin-top:22px;color:var(--ink-3);font-size:11.5px;text-align:center}
+/* ---------- section tabs ---------- */
+.tabs{display:flex;gap:8px;margin:14px 0 12px;flex-wrap:wrap}
+.tab{font:inherit;font-size:13px;font-weight:600;color:var(--ink-2);background:var(--card);border:1px solid var(--line);border-radius:10px;padding:9px 16px;cursor:pointer;transition:all .15s}
+.tab:hover{border-color:var(--accent);color:var(--accent)}
+.tab.active{background:var(--accent);border-color:var(--accent);color:#fff;box-shadow:0 2px 8px rgba(37,99,235,.25)}
+/* ---------- filter bar ---------- */
+.filterbar{margin-bottom:14px;padding:14px 16px}
+.filterbar-grid{display:flex;gap:18px;flex-wrap:wrap;align-items:flex-end}
+.f-group{display:flex;flex-direction:column;gap:5px}
+.f-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-2)}
+.f-hint{font-weight:400;text-transform:none;letter-spacing:0;color:var(--ink-3)}
+.f-inline{display:flex;align-items:center;gap:6px}
+.f-sep{color:var(--ink-3)}
+.f-input,select{font:inherit;font-size:12.5px;padding:6px 9px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink)}
+.f-input:focus,select:focus{outline:2px solid var(--accent-soft);border-color:var(--accent)}
+.f-actions{flex-direction:row;align-items:center;gap:10px;padding-bottom:2px}
+.btn-clear{font:inherit;font-size:12px;font-weight:600;color:var(--bad);background:var(--bad-soft);border:1px solid transparent;border-radius:8px;padding:6px 12px;cursor:pointer}
+.btn-clear:hover{background:#fbdcdc}
+.f-count{font-size:11.5px;color:var(--ink-2);font-weight:500}
+/* ---------- multi-select ---------- */
+.ms{position:relative;min-width:210px}
+.ms-btn{width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;font:inherit;font-size:12.5px;padding:6px 10px;border:1px solid var(--line);border-radius:8px;background:var(--card);cursor:pointer;text-align:left}
+.ms-btn:hover{border-color:#c7d2e3}
+.ms-btn .arr{color:var(--ink-3);font-size:10px;transition:transform .15s}
+.ms.open .ms-btn .arr{transform:rotate(180deg)}
+.ms-text{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+.ms-panel{display:none;position:absolute;top:calc(100% + 5px);left:0;right:0;min-width:250px;max-width:340px;background:var(--card);border:1px solid var(--line);border-radius:12px;box-shadow:0 8px 30px rgba(16,24,40,.14);z-index:50;padding:8px}
+.ms.open .ms-panel{display:block}
+.ms-search{width:100%;font:inherit;font-size:12.5px;padding:7px 10px;border:1px solid var(--line);border-radius:8px;margin-bottom:7px}
+.ms-search:focus{outline:none;border-color:var(--accent)}
+.ms-list{max-height:240px;overflow:auto}
+.ms-item{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:7px;cursor:pointer;font-size:12.5px}
+.ms-item:hover{background:#f4f7fb}
+.ms-item input{accent-color:var(--accent);cursor:pointer}
+.ms-item .sub-id{color:var(--ink-3);font-size:11px}
+.ms-item.hidden{display:none}
+.ms-actions{display:flex;justify-content:space-between;padding-top:7px;margin-top:5px;border-top:1px solid var(--line)}
+.ms-actions button{font:inherit;font-size:11.5px;font-weight:600;color:var(--accent);background:none;border:none;cursor:pointer;padding:3px 6px}
+.ms-actions button:hover{text-decoration:underline}
+.ms-empty{padding:10px;color:var(--ink-3);font-size:12px;text-align:center}
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>FnV Audit Score × IGCC</h1>
+    <div class="sub">Pod-level audit compliance vs customer complaints (IGCC) · FnV category</div>
+  </div>
+  <div class="controls">
+    <span class="pill"><span class="dot"></span><span id="db-meta">—</span></span>
+  </div>
+</header>
+
+<section class="filterbar card">
+  <div class="filterbar-grid">
+    <div class="f-group">
+      <label class="f-label">📅 Date range</label>
+      <div class="f-inline">
+        <input type="date" id="f-dfrom" class="f-input">
+        <span class="f-sep">→</span>
+        <input type="date" id="f-dto" class="f-input">
+      </div>
+    </div>
+    <div class="f-group" style="min-width:230px">
+      <label class="f-label">🏙️ Region <span class="f-hint">(searchable, multi-select)</span></label>
+      <div class="ms" id="ms-city"></div>
+    </div>
+    <div class="f-group" style="min-width:260px">
+      <label class="f-label">🏬 Pods / Stores <span class="f-hint">(search by name or ID)</span></label>
+      <div class="ms" id="ms-pod"></div>
+    </div>
+    <div class="f-group">
+      <label class="f-label">Tier</label>
+      <select id="f-tier"><option value="">All tiers</option></select>
+    </div>
+    <div class="f-group">
+      <label class="f-label">Audits per pod</label>
+      <select id="f-audits"><option value="">Any</option><option value="2">2+ audits</option><option value="1">1 audit only</option></select>
+    </div>
+    <div class="f-group f-actions">
+      <button class="btn-clear" id="btn-clear">✕ Clear all filters</button>
+      <span class="f-count" id="f-count"></span>
+    </div>
+  </div>
+</section>
+
+<section class="grid kpis" id="kpis"></section>
+
+<div class="tabs" id="section-tabs">
+  <button type="button" class="tab active" data-tab="sec-compare">📊 Audit Score — Pod Comparison</button>
+  <button type="button" class="tab" data-tab="sec-detail">📋 Audited Pods — Score &amp; IGCC Detail</button>
+</div>
+
+<section class="row" id="sec-compare">
+  <div class="card">
+    <div class="card-head"><div><h2>Audit Score — Pod Comparison</h2><div class="note">Pods audited twice — 1st and 2nd audit scores side by side. Click column headers to sort.</div></div>
+      <div class="controls"><button class="pill" id="btn-csv12" style="cursor:pointer">↓ Export CSV</button></div></div>
+    <div class="tbl-scroll" style="max-height:460px"><table id="tbl12"><thead></thead><tbody></tbody></table></div>
+  </div>
+</section>
+
+<section class="row" id="sec-detail" hidden>
+  <div class="card">
+    <div class="card-head"><div><h2>Audited Pods — Score &amp; IGCC Detail</h2><div class="note">Click column headers to sort. IGCC % = QNP in 14-day window around audit date.</div></div>
+      <div class="controls"><button class="pill" id="btn-csv" style="cursor:pointer">↓ Export CSV</button></div>
+    </div>
+    <div class="tbl-scroll"><table id="tbl"><thead></thead><tbody></tbody></table></div>
+  </div>
+</section>
+
+<div class="footer-note">Windows: pre = 14 days before audit, post = 14 days after (capped at next audit). QNP = IGCC orders ÷ total FnV orders. Score % = overall pod audit score. FNV% = FnV-section compliance.</div>
+
+<script src="dashboard_data.js"></script>
+<script>
+// STORES: [id, name, city, city2, tier, n, a1d, a1s, a1f, a2s, a2f, a1pre, a1post, a2pre, a2post]
+// AUDITS: [id, no, date, city, auditor, score, fnv, pre, post, preOrd, postOrd]
+// DAILY:  [id, date, tot, igcc]
+const S = STORES.map(r=>({id:r[0],name:r[1],city:r[2],city2:r[3],tier:r[4],n:r[5],a1d:r[6],a1s:r[7],a1f:r[8],a2s:r[9],a2f:r[10],a1pre:r[11],a1post:r[12],a2pre:r[13],a2post:r[14]}));
+const A = AUDITS.map(r=>({id:r[0],no:r[1],date:r[2],city:r[3],auditor:r[4],score:r[5],fnv:r[6],pre:r[7],post:r[8],preOrd:r[9],postOrd:r[10]}));
+const idStore = new Map(S.map(s=>[s.id,s]));
+
+const css=getComputedStyle(document.documentElement);
+const C={accent:"#2563eb",accent2:"#7c3aed",good:"#16a34a",bad:"#dc2626",warn:"#d97706",ink3:"#8b95a7"};
+
+function fmtPct(v,d=2){return v==null?"—":(100*v).toFixed(d)+"%"}
+function fmtN(v){return v==null?"—":Number(v).toLocaleString("en-IN")}
+
+// ---------- multi-select component ----------
+function createMultiSelect(containerId, items, placeholder, onChange){
+  const root=document.getElementById(containerId);
+  const selected=new Set();
+  root.innerHTML=`<button type="button" class="ms-btn"><span class="ms-text">${placeholder}</span><span class="arr">▼</span></button>
+    <div class="ms-panel">
+      <input type="text" class="ms-search" placeholder="Search...">
+      <div class="ms-list"></div>
+      <div class="ms-actions"><button type="button" class="ms-all">Select all</button><button type="button" class="ms-none">Clear</button></div>
+    </div>`;
+  const btn=root.querySelector(".ms-btn"),panel=root.querySelector(".ms-panel"),
+        search=root.querySelector(".ms-search"),list=root.querySelector(".ms-list"),
+        text=root.querySelector(".ms-text");
+  // sorted copy: selected items first
+  function renderList(filter){
+    const q=(filter||"").toLowerCase();
+    list.innerHTML="";
+    const sorted=[...items].sort((a,b)=>{
+      const sa=selected.has(a.value),sb=selected.has(b.value);
+      if(sa!==sb)return sa?-1:1;
+      return String(a.label).localeCompare(String(b.label));
+    });
+    let shown=0;
+    sorted.forEach(it=>{
+      const hay=(it.label+" "+(it.sub||"")).toLowerCase();
+      if(q&&!hay.includes(q))return;
+      shown++;
+      const div=document.createElement("label");
+      div.className="ms-item";
+      div.innerHTML=`<input type="checkbox" ${selected.has(it.value)?"checked":""}><span>${it.label}</span>${it.sub?`<span class="sub-id">${it.sub}</span>`:""}`;
+      div.querySelector("input").addEventListener("change",e=>{
+        if(e.target.checked)selected.add(it.value);else selected.delete(it.value);
+        updateText();onChange(selected);
+        // re-render to move selected to top
+        renderList(search.value);
+      });
+      list.appendChild(div);
+    });
+    if(!shown)list.innerHTML=`<div class="ms-empty">No matches</div>`;
+  }
+  function updateText(){
+    if(!selected.size)text.textContent=placeholder;
+    else if(selected.size<=2)text.textContent=[...selected].map(v=>items.find(i=>i.value===v)?.label).join(", ");
+    else text.textContent=`${selected.size} selected`;
+  }
+  btn.addEventListener("click",e=>{
+    e.stopPropagation();
+    const wasOpen=root.classList.contains("open");
+    document.querySelectorAll(".ms.open").forEach(m=>m.classList.remove("open"));
+    if(!wasOpen){root.classList.add("open");search.value="";renderList("");setTimeout(()=>search.focus(),30)}
+  });
+  search.addEventListener("input",()=>renderList(search.value));
+  search.addEventListener("click",e=>e.stopPropagation());
+  panel.addEventListener("click",e=>e.stopPropagation());
+  root.querySelector(".ms-all").addEventListener("click",()=>{items.forEach(i=>selected.add(i.value));updateText();renderList(search.value);onChange(selected)});
+  root.querySelector(".ms-none").addEventListener("click",()=>{selected.clear();updateText();renderList(search.value);onChange(selected)});
+  document.addEventListener("click",()=>root.classList.remove("open"));
+  updateText();
+  return {selected,updateText};
+}
+
+// ---------- filters ----------
+const fTier=document.getElementById("f-tier"),fAud=document.getElementById("f-audits"),
+      fFrom=document.getElementById("f-dfrom"),fTo=document.getElementById("f-dto");
+[...new Set(S.map(s=>s.tier))].sort().forEach(t=>fTier.add(new Option(t,t)));
+
+// date bounds from audit data
+const allAuditDates=A.map(a=>a.date).sort();
+if(allAuditDates.length){
+  fFrom.value=allAuditDates[0];fFrom.min=allAuditDates[0];fFrom.max=allAuditDates[allAuditDates.length-1];
+  fTo.value=allAuditDates[allAuditDates.length-1];fTo.min=allAuditDates[0];fTo.max=allAuditDates[allAuditDates.length-1];
+}
+const msCity=createMultiSelect("ms-city",
+  [...new Set(S.map(s=>s.city2))].filter(c=>c&&c!=="NaN"&&c!=="null").sort().map(c=>({value:c,label:c})),
+  "All regions",()=>renderAll());
+const msPod=createMultiSelect("ms-pod",
+  S.map(s=>({value:s.id,label:s.name||("Store "+s.id),sub:"#"+s.id})).sort((a,b)=>a.label.localeCompare(b.label)),
+  `All pods (${S.length})`,()=>renderAll());
+
+function dateInRange(d){
+  if(fFrom.value&&d<fFrom.value)return false;
+  if(fTo.value&&d>fTo.value)return false;
+  return true;
+}
+function filtered(){
+  const pods=msPod.selected,podsOn=pods.size>0,cities=msCity.selected,citiesOn=cities.size>0;
+  return S.filter(s=>{
+    if(podsOn&&!pods.has(s.id))return false;
+    if(citiesOn&&!cities.has(s.city2))return false;
+    if(fTier.value&&s.tier!==fTier.value)return false;
+    if(fAud.value&&s.n<+fAud.value)return false;
+    if(!dateInRange(s.a1d))return false;
+    return true;
+  });
+}
+function fIds(){return new Set(filtered().map(s=>s.id))}
+function fAudits(){
+  const ids=fIds();
+  return A.filter(a=>ids.has(a.id)&&a.score!=null&&dateInRange(a.date));
+}
+function fStoresPaired(){
+  const ids=fIds();
+  return A.filter(a=>ids.has(a.id)&&a.pre!=null&&a.post!=null&&dateInRange(a.date));
+}
+
+// ---------- KPIs ----------
+let kpiScope=null; // null | 'once' | 'twice' | 'first' | 'second' | 'pre' | 'post'
+function kpiHTML(label,val,deltaCls,deltaTxt,scope){
+  return `<div class="kpi kpi-click ${kpiScope&&kpiScope===scope?"active":""}" ${scope?`data-scope="${scope}" title="Click to show only this data"`:""}><div class="label">${label}</div><div class="val">${val}</div><div class="delta ${deltaCls||""}">${deltaTxt||""}</div></div>`;
+}
+function applyKpiScope(arr){
+  if(!kpiScope)return arr;
+  return arr.filter(s=>{
+    if(kpiScope==="once")return s.n===1;
+    if(kpiScope==="twice")return s.n>=2;
+    if(kpiScope==="first")return s.a1s!=null;
+    if(kpiScope==="second")return s.a2s!=null;
+    if(kpiScope==="pre")return s.a1pre!=null;
+    if(kpiScope==="post")return s.a1post!=null&&s.a1pre!=null;
+    return true;
+  });
+}
+function renderKpis(){
+  const st=applyKpiScope(filtered()), au=fAudits();
+  const ids=new Set(st.map(s=>s.id));
+  const au2=au.filter(a=>a.no===1);
+  const scores2=au.filter(a=>a.no===2).map(a=>a.score);
+  const s1avg=au2.length?au2.reduce((x,a)=>x+a.score,0)/au2.length:null;
+  const s2avg=scores2.length?scores2.reduce((x,y)=>x+y,0)/scores2.length:null;
+  const d=(s2avg!=null&&s1avg!=null)?s2avg-s1avg:null;
+  const paired=fStoresPaired();
+  const preAvg=paired.length?paired.reduce((x,a)=>x+a.pre,0)/paired.length:null;
+  const postAvg=paired.length?paired.reduce((x,a)=>x+a.post,0)/paired.length:null;
+  const pd=(postAvg!=null&&preAvg!=null)?(postAvg-preAvg)/preAvg*100:null;
+  const audStores=st.length, two=st.filter(s=>s.n>=2).length;
+  document.getElementById("kpis").innerHTML=
+    kpiHTML("Stores audited",audStores.toLocaleString(),null,`${two} audited 2+ times`)+
+    kpiHTML("Total audits",au.length.toLocaleString(),null,`${au2.length} first audits`)+
+    kpiHTML("Avg score — 1st audit",s1avg==null?"—":s1avg.toFixed(1)+"%",null,"overall audit score","first")+
+    kpiHTML("Avg score — 2nd audit",s2avg==null?"—":s2avg.toFixed(1)+"%",d==null?"flat":(d>=0?"up":"down"),d==null?"no 2nd audits in filter":"click: 2nd-audit pods","second")+
+    kpiHTML("IGCC before audit",fmtPct(preAvg),"flat","14-day avg QNP","pre")+
+    kpiHTML("IGCC after audit",fmtPct(postAvg),pd==null?"flat":(pd<=0?"up":"down"),pd==null?"—":`${pd>=0?"+":""}${pd.toFixed(1)}% change`,"post");
+  document.querySelectorAll("#kpis .kpi[data-scope]").forEach(el=>{
+    el.onclick=()=>{
+      const sc=el.dataset.scope;
+      kpiScope=(kpiScope===sc)?null:sc;
+      renderAll();
+    };
+  });  document.getElementById("db-meta").textContent=`${au.length} audits · ${audStores} stores`;
+}
+
+// ---------- 1st vs 2nd audit comparison table ----------
+let sortKey12="a1s",sortDir12=-1;
+const COLS12=[
+  {k:"name",t:"Pod / Store",fmt:v=>v||"—"},
+  {k:"id",t:"Pod ID",fmt:v=>"#"+v},
+  {k:"city2",t:"Region",fmt:v=>v||"—"},
+  {k:"a1d",t:"1st Audit Date",fmt:v=>v||"—"},
+  {k:"a1aud",t:"1st Auditor",fmt:v=>v||"—"},
+  {k:"a1s",t:"1st Audit Score",num:1,fmt:v=>v==null?"—":colorScore(v)},
+  {k:"a2d",t:"2nd Audit Date",fmt:v=>v||"—"},
+  {k:"a2aud",t:"2nd Auditor",fmt:v=>v||"—"},
+  {k:"a2s",t:"2nd Audit Score",num:1,fmt:v=>v==null?"—":colorScore(v)},
+  {k:"dS",t:"Change",num:1,fmt:(v,s)=>v==null?"—":`<span class="badge ${v>0?"b-bad":v<0?"b-good":"b-mid"}">${v>0?"▲ +":v<0?"▼ ":"● "}${v.toFixed(1)} pts</span>`},
+];
+function renderTable12(){
+  const st=filtered().filter(s=>s.n>=2&&s.a1s!=null&&s.a2s!=null)
+    .map(s=>({...s,dS:s.a2s-s.a1s,
+      a2d:(function(){const a2=A.find(a=>a.id===s.id&&a.no===2);return a2?a2.date:null})(),
+      a1aud:(function(){const a1=A.find(a=>a.id===s.id&&a.no===1);return a1?a1.auditor:null})(),
+      a2aud:(function(){const a2=A.find(a=>a.id===s.id&&a.no===2);return a2?a2.auditor:null})()}));
+  st.sort((a,b)=>{const av=a[sortKey12],bv=b[sortKey12];if(av==null)return 1;if(bv==null)return -1;if(typeof av==="string")return sortDir12*av.localeCompare(bv);return sortDir12*(av-bv)});
+  document.querySelector("#tbl12 thead").innerHTML="<tr>"+COLS12.map(c=>`<th data-k="${c.k}" class="${c.num?"num":""}">${c.t}</th>`).join("")+"</tr>";
+  document.querySelector("#tbl12 tbody").innerHTML=st.map(s=>"<tr>"+COLS12.map(c=>`<td class="${c.num?"num":""}">${c.fmt(s[c.k],s)}</td>`).join("")+"</tr>").join("");
+  document.querySelectorAll("#tbl12 th").forEach(th=>th.onclick=()=>{const k=th.dataset.k;if(sortKey12===k)sortDir12*=-1;else{sortKey12=k;sortDir12=-1}renderTable12()});
+  document.getElementById("btn-csv12").onclick=()=>{
+    const rows=[COLS12.map(c=>c.t)].concat(st.map(s=>COLS12.map(c=>s[c.k]==null?"":s[c.k])));
+    const blob=new Blob([rows.map(r=>r.join(",")).join("\n")],{type:"text/csv"});
+    const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="audit1_vs_audit2.csv";a.click();
+  };
+}
+
+// ---------- section tabs ----------
+document.querySelectorAll("#section-tabs .tab").forEach(btn=>{
+  btn.addEventListener("click",()=>{
+    document.querySelectorAll("#section-tabs .tab").forEach(b=>b.classList.remove("active"));
+    btn.classList.add("active");
+    document.getElementById("sec-compare").hidden=btn.dataset.tab!=="sec-compare";
+    document.getElementById("sec-detail").hidden=btn.dataset.tab!=="sec-detail";
+  });
+});
+
+// ---------- detail table ----------
+let sortKey="a1s",sortDir=-1;
+const COLS=[
+  {k:"id",t:"Pod ID",fmt:v=>"#"+v},
+  {k:"name",t:"Pod / Store",fmt:v=>v||"—"},
+  {k:"city2",t:"Region",fmt:v=>v||"—"},
+  {k:"tier",t:"Tier",fmt:v=>`<span class="badge ${v==="Tier_1"?"b-mid":"b-warn"}">${v}</span>`},
+  {k:"n",t:"Audits",fmt:v=>v},
+  {k:"a1d",t:"1st Audit Date",fmt:v=>v||"—"},
+  {k:"a1s",t:"Score 1 (%)",num:1,fmt:v=>v==null?"—":colorScore(v)},
+  {k:"a1pre",t:"IGCC pre 1",pct:1,fmt:v=>fmtPct(v)},
+  {k:"a1post",t:"IGCC post 1",pct:1,fmt:v=>fmtPct(v)},
+  {k:"a2d",t:"2nd Audit Date",fmt:v=>v||"—"},
+  {k:"a2s",t:"Score 2 (%)",num:1,fmt:v=>v==null?"—":colorScore(v)},
+  {k:"a2pre",t:"IGCC pre 2",pct:1,fmt:v=>fmtPct(v)},
+  {k:"a2post",t:"IGCC post 2",pct:1,fmt:v=>fmtPct(v)},
+  {k:"dS",t:"Δ Score",num:1,fmt:(v,s)=>v==null?"—":`<span class="badge ${v>=0?"b-good":"b-bad"}">${v>=0?"+":""}${v.toFixed(1)}</span>`},
+  {k:"dQ",t:"Δ IGCC post",fmt:(v,s)=>v==null?"—":`<span class="badge ${v<=0?"b-good":"b-bad"}">${(v>=0?"+":"")+(100*v).toFixed(2)}pp</span>`},
+];
+function colorScore(v){const cls=v>=85?"b-good":v>=70?"b-mid":v>=55?"b-warn":"b-bad";return `<span class="badge ${cls}">${v}</span>`}
+function renderTable(){
+  const st=filtered().map(s=>({...s,
+    a2d:(s.a2d||(function(){const a2=A.find(a=>a.id===s.id&&a.no===2);return a2?a2.date:null})()),
+    dS:(s.a1s!=null&&s.a2s!=null)?s.a2s-s.a1s:null,dQ:(s.a1post!=null&&s.a1pre!=null)?s.a1post-s.a1pre:null}));
+  st.sort((a,b)=>{const av=a[sortKey],bv=b[sortKey];if(av==null)return 1;if(bv==null)return -1;if(typeof av==="string")return sortDir*av.localeCompare(bv);return sortDir*(av-bv)});
+  document.querySelector("#tbl thead").innerHTML="<tr>"+COLS.map(c=>`<th data-k="${c.k}" class="${c.num?"num":""}">${c.t}</th>`).join("")+"</tr>";
+  document.querySelector("#tbl tbody").innerHTML=st.slice(0,400).map(s=>"<tr>"+COLS.map(c=>`<td class="${c.num?"num":""}">${c.fmt(s[c.k],s)}</td>`).join("")+"</tr>").join("");
+  document.querySelectorAll("#tbl th").forEach(th=>th.onclick=()=>{const k=th.dataset.k;if(sortKey===k)sortDir*=-1;else{sortKey=k;sortDir=-1}renderTable()});
+  document.getElementById("btn-csv").onclick=()=>{
+    const rows=[COLS.map(c=>c.t)].concat(st.map(s=>COLS.map(c=>{const v=s[c.k];return v==null?"":typeof v==="number"&&c.pct?(100*v).toFixed(3):v})));
+    const blob=new Blob([rows.map(r=>r.join(",")).join("\n")],{type:"text/csv"});
+    const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="audit_igcc_stores.csv";a.click();
+  };
+}
+
+function renderAll(){
+  renderKpis();renderTable12();renderTable();
+  const n=applyKpiScope(filtered()).length;
+  document.getElementById("f-count").textContent=`${n} pod${n===1?"":"s"} in view`+(!kpiScope?"":" · KPI filter: "+kpiScope+" (click card again to clear)");
+}
+[fTier,fAud,fFrom,fTo].forEach(el=>el&&el.addEventListener("change",renderAll));
+document.getElementById("btn-clear").addEventListener("click",()=>{
+  fTier.value="";fAud.value="";
+  fFrom.value=fFrom.min;fTo.value=fTo.max;
+  msCity.selected.clear();msCity.updateText();
+  msPod.selected.clear();msPod.updateText();
+  kpiScope=null;
+  renderAll();
+});
+renderAll();
+</script>
+</body>
+</html>

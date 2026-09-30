@@ -1,0 +1,13 @@
+{
+  "corr_score_vs_pre_qnp": -0.23,
+  "corr_score_vs_post_qnp": -0.211,
+  "n_stores": 768,
+  "avg_score_audit1": 75.4,
+  "n_stores_2audits": 103,
+  "avg_score_audit2": 79.5,
+  "avg_score_delta_1to2": 1.7,
+  "n_stores_full_windows": 29,
+  "avg_pre_qnp_1": 0.0128,
+  "avg_post_qnp_2": 0.013,
+  "corr_score1_vs_score2_delta": -0.322
+}
