@@ -162,6 +162,7 @@ tr:hover td{background:#F7F9F8}
   <button type="button" class="tab" data-tab="sec-detail">📋 Audited Pods — Score &amp; IGCC Detail</button>
   <button type="button" class="tab" data-tab="sec-param">🔬 Parameter-wise Analysis</button>
   <button type="button" class="tab" data-tab="sec-groups">⚖️ Audited vs Not Audited</button>
+  <button type="button" class="tab" data-tab="sec-noaudit">🚫 Not Audited Pods — Daily IGCC</button>
 </div>
 
 <section class="row" id="sec-compare">
@@ -232,6 +233,30 @@ tr:hover td{background:#F7F9F8}
         <div class="controls"><button class="pill" id="btn-csv-groups" style="cursor:pointer">↓ Export CSV</button></div></div>
       <div class="tbl-scroll" style="max-height:460px"><table id="tbl-gpods"><thead></thead><tbody></tbody></table></div>
     </div>
+  </div>
+</section>
+
+<section class="row" id="sec-noaudit" hidden>
+  <div class="card">
+    <div class="card-head"><div><h2>Not Audited Pods — Daily IGCC</h2><div class="note">Daily IGCC (QNP %) for pods never audited — control group. Defaults to the last 15 days of IGCC data; change the date range below. Global region/tier filters apply.</div></div>
+      <div class="controls"><button class="pill" id="btn-csv-noaudit" style="cursor:pointer">↓ Export CSV</button></div></div>
+    <div class="filterbar-grid" style="margin:10px 0 14px">
+      <div class="f-group">
+        <label class="f-label">📅 IGCC date range <span class="f-hint">(default: last 15 days)</span></label>
+        <div class="f-inline">
+          <input type="date" id="na-dfrom" class="f-input">
+          <span class="f-sep">→</span>
+          <input type="date" id="na-dto" class="f-input">
+          <button type="button" class="pill" id="na-last15" style="cursor:pointer">Last 15 days</button>
+        </div>
+      </div>
+      <div class="f-group" style="min-width:260px">
+        <label class="f-label">🏬 Pod <span class="f-hint">(search by name or ID)</span></label>
+        <div class="ms" id="na-ms-pod"></div>
+      </div>
+    </div>
+    <div class="grid kpis" id="na-kpis"></div>
+    <div class="tbl-scroll" style="max-height:520px"><table id="tbl-noaudit"><thead></thead><tbody></tbody></table></div>
   </div>
 </section>
 
@@ -476,8 +501,10 @@ document.querySelectorAll("#section-tabs .tab").forEach(btn=>{
     document.getElementById("sec-detail").hidden=btn.dataset.tab!=="sec-detail";
     document.getElementById("sec-param").hidden=btn.dataset.tab!=="sec-param";
     document.getElementById("sec-groups").hidden=btn.dataset.tab!=="sec-groups";
+    document.getElementById("sec-noaudit").hidden=btn.dataset.tab!=="sec-noaudit";
     if(btn.dataset.tab==="sec-param")renderParam();
     if(btn.dataset.tab==="sec-groups")renderGroups();
+    if(btn.dataset.tab==="sec-noaudit")renderNoAudit();
   });
 });
 
@@ -744,8 +771,84 @@ function renderTable(){
   };
 }
 
+// ---------- not-audited pods: daily IGCC ----------
+const DAILY_UNAUDITED=DAILY.map(r=>({id:r[0],date:r[1],tot:r[2],igcc:r[3]}))
+  .filter(d=>{const s=S_UNAUDITED.find(s=>s.id===d.id);if(!s)return false;d.city2=s.city2;d.tier=s.tier;d.name=s.name;return true;});
+const dailyDates=[...new Set(DAILY_UNAUDITED.map(d=>d.date))].sort();
+const naFrom=document.getElementById("na-dfrom"),naTo=document.getElementById("na-dto");
+if(dailyDates.length){
+  naFrom.min=naTo.min=dailyDates[0];naFrom.max=naTo.max=dailyDates[dailyDates.length-1];
+  naFrom.value=addDays(dailyDates[dailyDates.length-1],-14)<dailyDates[0]?dailyDates[0]:addDays(dailyDates[dailyDates.length-1],-14);
+  naTo.value=dailyDates[dailyDates.length-1];
+}
+function addDays(dstr,n){const d=new Date(dstr+"T00:00:00");d.setDate(d.getDate()+n);return d.toISOString().slice(0,10)}
+let naSortKey="date",naSortDir=-1,naPods=new Set();
+function renderNoAudit(){
+  // pod filter options respect global region/tier filters
+  const globalIds=new Set(S_UNAUDITED.filter(s=>{
+    if(msCity.selected.size&&!msCity.selected.has(s.city2))return false;
+    if(fTier.value&&s.tier!==fTier.value)return false;
+    return true;}).map(s=>s.id));
+  const pods=[...new Map(DAILY_UNAUDITED.filter(d=>globalIds.has(d.id))
+    .map(d=>[d.id,d])).values()]
+    .map(d=>({value:d.id,label:d.name||("Store "+d.id),sub:"#"+d.id}))
+    .sort((a,b)=>a.label.localeCompare(b.label));
+  const sig=globalIds.size+":"+pods.length;
+  if(!renderNoAudit._podMs||renderNoAudit._podSig!==sig){
+    createMultiSelect("na-ms-pod",pods,`All pods (${pods.length})`,sel=>{naPods=new Set(sel);renderNoAudit();});
+    renderNoAudit._podMs=true;renderNoAudit._podSig=sig;
+  }
+  if(naPods.size)[...naPods].forEach(v=>{if(!pods.some(p=>p.value===v))naPods.delete(v)});
+  const rows=DAILY_UNAUDITED.filter(d=>{
+    if(!globalIds.has(d.id))return false;
+    if(naPods.size&&!naPods.has(d.id))return false;
+    if(naFrom.value&&d.date<naFrom.value)return false;
+    if(naTo.value&&d.date>naTo.value)return false;
+    return true;});
+  // KPIs
+  const kpi=(l,v,d)=>`<div class="kpi"><div class="label">${l}</div><div class="val">${v}</div><div class="delta">${d||""}</div></div>`;
+  const podsInView=new Set(rows.map(d=>d.id));
+  const tot=rows.reduce((x,d)=>x+d.tot,0), igc=rows.reduce((x,d)=>x+d.igcc,0);
+  const qnp=tot>0?igc/tot:null;
+  const days=[...new Set(rows.map(d=>d.date))];
+  document.getElementById("na-kpis").innerHTML=
+    kpi("Pods in view",podsInView.size.toLocaleString(),`${rows.length.toLocaleString()} daily rows`)+
+    kpi("Days in range",days.length,`${days.length?days[0]:"—"} → ${days.length?days[days.length-1]:"—"}`)+
+    kpi("Total FnV orders",fmtN(tot))+
+    kpi("IGCC (QNP %)",fmtPct(qnp),`${fmtN(igc)} IGCC orders`);
+  const COLS_NA=[
+    {k:"date",t:"Date"},
+    {k:"id",t:"Pod ID",fmt:v=>"#"+v},
+    {k:"name",t:"Pod Name",fmt:v=>v||"—"},
+    {k:"city2",t:"Region",fmt:v=>v||"—"},
+    {k:"tier",t:"Tier",fmt:v=>v||"—"},
+    {k:"tot",t:"FnV Orders",num:1,fmt:v=>fmtN(v)},
+    {k:"igcc",t:"IGCC Orders",num:1,fmt:v=>fmtN(v)},
+    {k:"qnp",t:"IGCC % (QNP)",num:1,fmt:(v,d)=>d.tot>0?fmtPct(d.igcc/d.tot):"—"},
+  ];
+  rows.sort((a,b)=>{const av=a[naSortKey],bv=b[naSortKey];if(av==null)return 1;if(bv==null)return -1;
+    if(naSortKey==="qnp"){const x=a.tot>0?a.igcc/a.tot:0,y=b.tot>0?b.igcc/b.tot:0;return naSortDir*(x-y)}
+    if(typeof av==="string")return naSortDir*av.localeCompare(bv);return naSortDir*(av-bv)});
+  document.querySelector("#tbl-noaudit thead").innerHTML="<tr>"+COLS_NA.map(c=>`<th data-k="${c.k}" class="${c.num?"num":""}">${c.t}</th>`).join("")+"</tr>";
+  document.querySelector("#tbl-noaudit tbody").innerHTML=rows.slice(0,1000).map(d=>"<tr>"+COLS_NA.map(c=>{
+    if(c.k==="qnp")return `<td class="num">${c.fmt(null,d)}</td>`;
+    return `<td class="${c.num?"num":""}">${c.fmt?c.fmt(d[c.k]):(d[c.k]??"—")}</td>`;}).join("")+"</tr>").join("");
+  document.querySelectorAll("#tbl-noaudit th").forEach(th=>th.onclick=()=>{const k=th.dataset.k;if(naSortKey===k)naSortDir*=-1;else{naSortKey=k;naSortDir=-1}renderNoAudit()});
+  document.getElementById("btn-csv-noaudit").onclick=()=>{
+    const rowsCsv=[COLS_NA.map(c=>c.t)].concat(rows.map(d=>COLS_NA.map(c=>{
+      if(c.k==="qnp")return d.tot>0?(d.igcc/d.tot).toFixed(5):"";
+      const v=d[c.k];return v==null?"":v;})));
+    const blob=new Blob([rowsCsv.map(r=>r.join(",")).join("\n")],{type:"text/csv"});
+    const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="not_audited_daily_igcc.csv";a.click();
+  };
+  renderNoAudit._count=rows.length;
+}
+document.getElementById("na-last15").addEventListener("click",()=>{
+  naFrom.value=addDays(dailyDates[dailyDates.length-1],-14);naTo.value=dailyDates[dailyDates.length-1];renderNoAudit();});
+[naFrom,naTo].forEach(el=>el.addEventListener("change",renderNoAudit));
+
 function renderAll(){
-  renderKpis();renderTable12();renderTable();renderParam();renderGroups();
+  renderKpis();renderTable12();renderTable();renderParam();renderGroups();renderNoAudit();
   const n=applyKpiScope(filtered()).length;
   document.getElementById("f-count").textContent=`${n} pod${n===1?"":"s"} in view`+(!kpiScope?"":" · KPI filter: "+kpiScope+" (click card again to clear)");
 }

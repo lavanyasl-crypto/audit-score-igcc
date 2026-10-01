@@ -46,12 +46,29 @@ for _, r in per_audit.iterrows():
         int(r["post_orders"]) if not pd.isna(r["post_orders"]) else 0,
     ])
 
-# Daily IGCC (compact arrays: [store_id, dateStr, orders_total, orders_igcc])
+# Daily IGCC for never-audited pods (for the "No audits" tab)
+groups_txt = open(BASE + r"\unaudited_data.js", encoding="utf-8").read()
+groups = json.loads(groups_txt[len("const AUDIT_GROUPS = "):].rstrip(";\n"))
+unaudited_ids = {int(g["id"]) for g in groups if g["n"] == 0}
+
+# Daily IGCC for never-audited pods (for the "No audits" tab) — from the raw
+# IGCC file, since daily_igcc_audited.csv only covers audited stores
+ig = pd.read_csv(BASE + r"\Store IGCC\IGCC _Daily Summary - Store inc (1).csv")
+ig["STORE_ID"] = pd.to_numeric(ig["STORE_ID"], errors="coerce").astype("Int64")
+ig["ORDER_DATE"] = pd.to_datetime(ig["ORDER_DATE"])
+for c in ("ORDERS_TOTAL", "ORDERS_IGCC"):
+    ig[c] = pd.to_numeric(ig[c], errors="coerce")
+ig = ig.dropna(subset=["STORE_ID"])
+ig_daily = ig.groupby(["STORE_ID", "ORDER_DATE"], as_index=False).agg(
+    orders_total=("ORDERS_TOTAL", "sum"), orders_igcc=("ORDERS_IGCC", "sum"))
+ig_daily = ig_daily[ig_daily["STORE_ID"].isin(unaudited_ids)]
+
+unaudited_daily = ig_daily.sort_values(["STORE_ID", "ORDER_DATE"])
 daily_records = []
-for _, r in daily.iterrows():
+for _, r in unaudited_daily.iterrows():
     daily_records.append([
         int(r["STORE_ID"]),
-        str(r["ORDER_DATE"]),
+        r["ORDER_DATE"].strftime("%Y-%m-%d"),
         int(r["orders_total"]) if not pd.isna(r["orders_total"]) else 0,
         int(r["orders_igcc"]) if not pd.isna(r["orders_igcc"]) else 0,
     ])
