@@ -3,35 +3,40 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Audit Score × IGCC — FnV Analysis</title>
+<title>Audit Performance &amp; IGCC Analysis</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root{
-  --bg:#f4f6fa; --card:#ffffff; --ink:#1a2332; --ink-2:#5a6577; --ink-3:#8b95a7;
-  --line:#e5e9f0; --accent:#2563eb; --accent-soft:#eff4ff;
-  --good:#16a34a; --good-soft:#e8f7ee; --bad:#dc2626; --bad-soft:#fdecec;
-  --warn:#d97706; --warn-soft:#fdf3e3;
-  --r:14px; --shadow:0 1px 3px rgba(16,24,40,.06),0 4px 16px rgba(16,24,40,.06);
+  --navy:#192C43; --teal:#2F7773; --sage:#829B8C; --gold:#D1B477;
+  --bg:#F4F6F5; --card:#ffffff; --ink:#192C43; --ink-2:#46566D; --ink-3:#7C8798;
+  --line:#E4E8E6; --accent:#2F7773; --accent-soft:#EBF1F0;
+  --good:#2F7773; --good-soft:#E9F0EF;
+  --sage-deep:#5F7A6B; --sage-soft:#EEF2EF;
+  --bad:#A85F52; --bad-soft:#F5EBE8;
+  --warn:#A5843C; --warn-soft:#F7F1E2;
+  --r:14px; --shadow:0 1px 2px rgba(25,44,67,.05),0 6px 18px rgba(25,44,67,.06);
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{background:var(--bg);color:var(--ink);font-family:'Inter',system-ui,sans-serif;font-size:14px;line-height:1.45}
 body{padding:20px 22px 60px;max-width:1500px;margin:0 auto}
-h1{font-size:21px;font-weight:800;letter-spacing:-.02em}
-h2{font-size:15px;font-weight:700;letter-spacing:-.01em;margin-bottom:2px}
+h1{font-family:'Fraunces',Georgia,serif;font-size:23px;font-weight:600;letter-spacing:.01em;color:var(--navy);padding-bottom:10px;background:linear-gradient(to right,var(--gold),var(--gold)) left bottom/56px 2px no-repeat}
+h2{font-size:15px;font-weight:700;letter-spacing:-.01em;margin-bottom:2px;color:var(--navy)}
 .sub{color:var(--ink-2);font-size:12.5px;margin-top:3px}
 header{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end;justify-content:space-between;margin-bottom:18px}
 .pill{display:inline-flex;align-items:center;gap:6px;background:var(--card);border:1px solid var(--line);border-radius:99px;padding:5px 12px;font-size:12px;color:var(--ink-2);font-weight:500}
-.dot{width:7px;height:7px;border-radius:50%;background:var(--good)}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--teal)}
 .grid{display:grid;gap:14px}
 .kpis{grid-template-columns:repeat(auto-fit,minmax(168px,1fr));margin-bottom:14px}
-.kpi{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px;box-shadow:var(--shadow)}
+.kpi{background:var(--card);border:1px solid var(--line);border-top:3px solid var(--sage);border-radius:var(--r);padding:14px 16px;box-shadow:var(--shadow)}
+.kpi:nth-child(3n+2){border-top-color:var(--teal)}
+.kpi:nth-child(3n+3){border-top-color:var(--gold)}
 .kpi .label{font-size:11.5px;font-weight:600;color:var(--ink-2);text-transform:uppercase;letter-spacing:.05em}
-.kpi .val{font-size:26px;font-weight:800;letter-spacing:-.03em;margin-top:4px}
+.kpi .val{font-size:26px;font-weight:700;letter-spacing:-.03em;margin-top:4px;color:var(--navy);font-variant-numeric:tabular-nums}
 .kpi .delta{font-size:12px;font-weight:600;margin-top:2px}
 .kpi-click{cursor:pointer;transition:border-color .15s,box-shadow .15s}
-.kpi-click:hover{border-color:var(--accent)}
-.kpi-click.active{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft)}
+.kpi-click:hover{border-color:var(--teal)}
+.kpi-click.active{border-color:var(--teal);box-shadow:0 0 0 2px var(--accent-soft)}
 .up{color:var(--good)} .down{color:var(--bad)} .flat{color:var(--ink-3)}
 .row{display:grid;gap:14px;margin-bottom:14px}
 .row[hidden]{display:none}
@@ -44,25 +49,25 @@ header{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end;justify-content
 .controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 select{font:inherit;font-size:12.5px;padding:6px 10px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink);cursor:pointer}
 table{width:100%;border-collapse:collapse;font-size:12.5px}
-th{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-2);font-weight:600;text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap;cursor:pointer;user-select:none}
-th:hover{color:var(--accent)}
-td{padding:8px 10px;border-bottom:1px solid #f0f3f7;white-space:nowrap}
-tr:hover td{background:#f8fafd}
+th{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-2);font-weight:600;text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap;cursor:pointer;user-select:none;background:var(--card)}
+th:hover{color:var(--teal)}
+td{padding:8px 10px;border-bottom:1px solid #EEF1F0;white-space:nowrap}
+tr:hover td{background:#F7F9F8}
 .num{text-align:right;font-variant-numeric:tabular-nums}
 .badge{display:inline-block;padding:2px 9px;border-radius:99px;font-size:11px;font-weight:600}
 .b-good{background:var(--good-soft);color:var(--good)} .b-bad{background:var(--bad-soft);color:var(--bad)}
-.b-warn{background:var(--warn-soft);color:var(--warn)} .b-mid{background:var(--accent-soft);color:var(--accent)}
+.b-warn{background:var(--warn-soft);color:var(--warn)} .b-mid{background:var(--sage-soft);color:var(--sage-deep)}
 .tbl-scroll{max-height:420px;overflow:auto;border-radius:10px;border:1px solid var(--line)}
 .tbl-scroll thead th{position:sticky;top:0;background:var(--card);z-index:1}
 .insight{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border-radius:10px;font-size:12.5px;margin-bottom:8px}
-.i-good{background:var(--good-soft)} .i-bad{background:var(--bad-soft)} .i-warn{background:var(--warn-soft)} .i-mid{background:var(--accent-soft)}
+.i-good{background:var(--good-soft)} .i-bad{background:var(--bad-soft)} .i-warn{background:var(--warn-soft)} .i-mid{background:var(--sage-soft)}
 .insight b{font-weight:700}
 .footer-note{margin-top:22px;color:var(--ink-3);font-size:11.5px;text-align:center}
 /* ---------- section tabs ---------- */
 .tabs{display:flex;gap:8px;margin:14px 0 12px;flex-wrap:wrap}
 .tab{font:inherit;font-size:13px;font-weight:600;color:var(--ink-2);background:var(--card);border:1px solid var(--line);border-radius:10px;padding:9px 16px;cursor:pointer;transition:all .15s}
-.tab:hover{border-color:var(--accent);color:var(--accent)}
-.tab.active{background:var(--accent);border-color:var(--accent);color:#fff;box-shadow:0 2px 8px rgba(37,99,235,.25)}
+.tab:hover{border-color:var(--teal);color:var(--teal)}
+.tab.active{background:var(--navy);border-color:var(--navy);color:#fff;box-shadow:0 2px 8px rgba(25,44,67,.22)}
 /* ---------- filter bar ---------- */
 .filterbar{margin-bottom:14px;padding:14px 16px}
 .filterbar-grid{display:flex;gap:18px;flex-wrap:wrap;align-items:flex-end}
@@ -72,38 +77,44 @@ tr:hover td{background:#f8fafd}
 .f-inline{display:flex;align-items:center;gap:6px}
 .f-sep{color:var(--ink-3)}
 .f-input,select{font:inherit;font-size:12.5px;padding:6px 9px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink)}
-.f-input:focus,select:focus{outline:2px solid var(--accent-soft);border-color:var(--accent)}
+.f-input:focus,select:focus{outline:2px solid var(--accent-soft);border-color:var(--teal)}
 .f-actions{flex-direction:row;align-items:center;gap:10px;padding-bottom:2px}
 .btn-clear{font:inherit;font-size:12px;font-weight:600;color:var(--bad);background:var(--bad-soft);border:1px solid transparent;border-radius:8px;padding:6px 12px;cursor:pointer}
-.btn-clear:hover{background:#fbdcdc}
+.btn-clear:hover{background:#EEDCD6}
 .f-count{font-size:11.5px;color:var(--ink-2);font-weight:500}
 /* ---------- multi-select ---------- */
 .ms{position:relative;min-width:210px}
-.ms-btn{width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;font:inherit;font-size:12.5px;padding:6px 10px;border:1px solid var(--line);border-radius:8px;background:var(--card);cursor:pointer;text-align:left}
-.ms-btn:hover{border-color:#c7d2e3}
+.ms-btn{width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;font:inherit;font-size:12.5px;padding:6px 10px;border:1px solid var(--line);border-radius:8px;background:var(--card);cursor:pointer;text-align:left;color:var(--ink)}
+.ms-btn:hover{border-color:var(--sage)}
 .ms-btn .arr{color:var(--ink-3);font-size:10px;transition:transform .15s}
 .ms.open .ms-btn .arr{transform:rotate(180deg)}
 .ms-text{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
-.ms-panel{display:none;position:absolute;top:calc(100% + 5px);left:0;right:0;min-width:250px;max-width:340px;background:var(--card);border:1px solid var(--line);border-radius:12px;box-shadow:0 8px 30px rgba(16,24,40,.14);z-index:50;padding:8px}
+.ms-panel{display:none;position:absolute;top:calc(100% + 5px);left:0;right:0;min-width:250px;max-width:340px;background:var(--card);border:1px solid var(--line);border-radius:12px;box-shadow:0 8px 30px rgba(25,44,67,.16);z-index:50;padding:8px}
 .ms.open .ms-panel{display:block}
 .ms-search{width:100%;font:inherit;font-size:12.5px;padding:7px 10px;border:1px solid var(--line);border-radius:8px;margin-bottom:7px}
-.ms-search:focus{outline:none;border-color:var(--accent)}
+.ms-search:focus{outline:none;border-color:var(--teal)}
 .ms-list{max-height:240px;overflow:auto}
 .ms-item{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:7px;cursor:pointer;font-size:12.5px}
-.ms-item:hover{background:#f4f7fb}
-.ms-item input{accent-color:var(--accent);cursor:pointer}
+.ms-item:hover{background:var(--bg)}
+.ms-item input{accent-color:var(--teal);cursor:pointer}
 .ms-item .sub-id{color:var(--ink-3);font-size:11px}
 .ms-item.hidden{display:none}
 .ms-actions{display:flex;justify-content:space-between;padding-top:7px;margin-top:5px;border-top:1px solid var(--line)}
-.ms-actions button{font:inherit;font-size:11.5px;font-weight:600;color:var(--accent);background:none;border:none;cursor:pointer;padding:3px 6px}
+.ms-actions button{font:inherit;font-size:11.5px;font-weight:600;color:var(--teal);background:none;border:none;cursor:pointer;padding:3px 6px}
 .ms-actions button:hover{text-decoration:underline}
 .ms-empty{padding:10px;color:var(--ink-3);font-size:12px;text-align:center}
+.param-picker{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+.p-select{max-width:520px;font-weight:600}
+.p-note{font-size:12px;color:var(--ink-2);margin-top:10px}
+.p-score-2{color:var(--teal);font-weight:700}
+.p-score-1{color:var(--warn);font-weight:700}
+.p-score-0{color:var(--bad);font-weight:700}
 </style>
 </head>
 <body>
 <header>
   <div>
-    <h1>FnV Audit Score × IGCC</h1>
+    <h1>Audit Performance &amp; IGCC Analysis</h1>
     <div class="sub">Pod-level audit compliance vs customer complaints (IGCC) · FnV category</div>
   </div>
   <div class="controls">
@@ -149,6 +160,7 @@ tr:hover td{background:#f8fafd}
 <div class="tabs" id="section-tabs">
   <button type="button" class="tab active" data-tab="sec-compare">📊 Audit Score — Pod Comparison</button>
   <button type="button" class="tab" data-tab="sec-detail">📋 Audited Pods — Score &amp; IGCC Detail</button>
+  <button type="button" class="tab" data-tab="sec-param">🔬 Parameter-wise Analysis</button>
 </div>
 
 <section class="row" id="sec-compare">
@@ -168,9 +180,43 @@ tr:hover td{background:#f8fafd}
   </div>
 </section>
 
+<section class="row" id="sec-param" hidden>
+  <div class="card">
+    <div class="card-head"><div><h2>Parameter-wise Score × IGCC</h2><div class="note">Each audit parameter is scored 2 (Compliance), 1 (Partially), 0 (Non-Compliance). Pick a parameter — or "All parameters" for the aggregate — to see its score distribution and how IGCC behaves for each score level — overall, city-wise and pod-wise.</div></div></div>
+    <div class="param-picker">
+      <label class="f-label">Parameter</label>
+      <select id="p-param" class="p-select"></select>
+      <label class="f-label" style="margin-left:16px">Zone</label>
+      <select id="p-zone" class="p-select"></select>
+      <label class="f-label" style="margin-left:16px">City</label>
+      <select id="p-city" class="p-select"></select>
+      <label class="f-label" style="margin-left:16px">Pod</label>
+      <select id="p-pod" class="p-select"></select>
+    </div>
+    <div class="grid kpis" id="p-kpis"></div>
+    <div class="p-note" id="p-def"></div>
+    <div class="row-2" style="margin-top:14px">
+      <div class="card" style="box-shadow:none">
+        <div class="card-head"><div><h3 style="margin:0 0 6px;font-size:14px">IGCC (QNP %) by parameter score</h3><div class="note">Avg IGCC in 14-day pre/post windows for audits scoring 0 / 1 / 2.</div></div></div>
+        <div class="tbl-scroll" style="max-height:320px"><table id="tbl-pigcc"><thead></thead><tbody></tbody></table></div>
+      </div>
+      <div class="card" style="box-shadow:none">
+        <div class="card-head"><div><h3 style="margin:0 0 6px;font-size:14px">City-wise breakdown</h3><div class="note">Compliance rate and IGCC per city for this parameter.</div></div></div>
+        <div class="tbl-scroll" style="max-height:320px"><table id="tbl-pcity"><thead></thead><tbody></tbody></table></div>
+      </div>
+    </div>
+    <div class="card" style="box-shadow:none;margin-top:14px">
+      <div class="card-head"><div><h3 style="margin:0 0 6px;font-size:14px">Pod-wise breakdown</h3><div class="note">Every audited pod — this parameter's scores across its audits and the matching IGCC windows. Click headers to sort.</div></div>
+        <div class="controls"><button class="pill" id="btn-csv-param" style="cursor:pointer">↓ Export CSV</button></div></div>
+      <div class="tbl-scroll" style="max-height:460px"><table id="tbl-ppod"><thead></thead><tbody></tbody></table></div>
+    </div>
+  </div>
+</section>
+
 <div class="footer-note">Windows: pre = 14 days before audit, post = 14 days after (capped at next audit). QNP = IGCC orders ÷ total FnV orders. Score % = overall pod audit score. FNV% = FnV-section compliance.</div>
 
 <script src="dashboard_data.js"></script>
+<script src="param_data.js"></script>
 <script>
 // STORES: [id, name, city, city2, tier, n, a1d, a1s, a1f, a2s, a2f, a1pre, a1post, a2pre, a2post]
 // AUDITS: [id, no, date, city, auditor, score, fnv, pre, post, preOrd, postOrd]
@@ -374,8 +420,171 @@ document.querySelectorAll("#section-tabs .tab").forEach(btn=>{
     btn.classList.add("active");
     document.getElementById("sec-compare").hidden=btn.dataset.tab!=="sec-compare";
     document.getElementById("sec-detail").hidden=btn.dataset.tab!=="sec-detail";
+    document.getElementById("sec-param").hidden=btn.dataset.tab!=="sec-param";
+    if(btn.dataset.tab==="sec-param")renderParam();
   });
 });
+
+// ---------- parameter-wise analysis ----------
+const SCORE_LBL={0:"Non-Compliance",1:"Partially Complied",2:"Compliance"};
+let pIdx=0,pZone="",pCity="",pPod="",pSortKey="pod",pSortDir=1;
+const ZONES=[...new Set(PARAM_NAMES.map(n=>n.split(" - ")[0]))];
+function zoneOf(name){return name.split(" - ")[0]}
+function scoreBadge(v){return v==null?"—":`<span class="p-score-${v}">${v}</span>`}
+function scoreBadgeFrac(v){return v==null?"—":`<span class="p-score-${Math.round(v)}">${v.toFixed(2)}</span>`}
+function avgParamScore(a){
+  const s=a.scores.filter(v=>v!=null);
+  return s.length?(s.reduce((x,y)=>x+y,0)/s.length)*50:null; // mean param score (0-2) → audit score % (0-100)
+}
+function initParamUI(){
+  const zoneSel=document.getElementById("p-zone");
+  zoneSel.innerHTML=`<option value="">All zones</option>`+ZONES.map(z=>`<option value="${z}">${z}</option>`).join("");
+  zoneSel.onchange=()=>{pZone=zoneSel.value;fillParamSelect();renderParam()};
+  const citySel=document.getElementById("p-city");
+  const cities=[...new Set(PARAM_AUDITS.map(a=>a.city2).filter(c=>c&&c!=="NaN"))].sort();
+  citySel.innerHTML=`<option value="">All cities</option>`+cities.map(c=>`<option value="${c}">${c}</option>`).join("");
+  citySel.onchange=()=>{pCity=citySel.value;fillPodFilter();renderParam()};
+  fillPodFilter();
+  fillParamSelect();
+}
+function fillPodFilter(){
+  const podSel=document.getElementById("p-pod");
+  const pods=[...new Map(PARAM_AUDITS.filter(a=>!pCity||a.city2===pCity)
+    .map(a=>[a.store_id,a.city2])).entries()]
+    .map(([id,city2])=>{const st=S.find(s=>s.id===id);return{id,label:(st&&st.name)||("Store "+id)};})
+    .sort((a,b)=>a.label.localeCompare(b.label));
+  podSel.innerHTML=`<option value="">All pods</option>`+pods.map(p=>`<option value="${p.id}">${p.label}</option>`).join("");
+  if(pPod&&!pods.some(p=>String(p.id)===pPod))pPod="";
+  podSel.value=pPod;
+  podSel.onchange=()=>{pPod=podSel.value;renderParam()};
+}
+function fillParamSelect(){
+  const sel=document.getElementById("p-param");
+  const names=PARAM_NAMES.map((n,i)=>({n,i})).filter(o=>!pZone||zoneOf(o.n)===pZone);
+  sel.innerHTML=`<option value="-1">★ All parameters (aggregate)</option>`+names.map(o=>`<option value="${o.i}">${o.n}</option>`).join("");
+  if(pIdx!==-1&&!names.some(o=>o.i===pIdx))pIdx=names.length?names[0].i:0;
+  sel.value=pIdx;
+  sel.onchange=()=>{pIdx=+sel.value;renderParam()};
+}
+function paramAudits(){
+  const ids=fIds();
+  return PARAM_AUDITS.filter(a=>ids.has(a.store_id)&&dateInRange(a.audit_date)
+    &&(!pCity||a.city2===pCity)&&(!pPod||String(a.store_id)===pPod)
+    &&(!fTier.value||a.tier===fTier.value)&&(!fAud.value||1)&&true);
+}
+function renderParam(){
+  const allMode=pIdx===-1;
+  const name=allMode?"All parameters (aggregate)":PARAM_NAMES[pIdx];
+  const col=pIdx;
+  const pa=paramAudits().map(a=>({...a,s:allMode?avgParamScore(a):a.scores[col]})).filter(a=>a.s!=null);
+  const withS=pa;
+  const n2=withS.filter(a=>a.s===2).length,n1=withS.filter(a=>a.s===1).length,n0=withS.filter(a=>a.s===0).length;
+  const n=withS.length;
+  // avg pre/post igcc per score level
+  let byScore;
+  if(allMode){
+    byScore=[[0,70,"<70"],[70,85,"70–85"],[85,101,"≥85"]].map(([lo,hi2,lbl])=>{
+      const arr=withS.filter(a=>a.s>=lo&&a.s<hi2);
+      const pre=arr.filter(a=>a.pre_qnp!=null),post=arr.filter(a=>a.post_qnp!=null);
+      return {v:lbl,mean:arr.length?arr.reduce((x,a)=>x+a.s,0)/arr.length:null,count:arr.length,
+        pre:pre.length?pre.reduce((x,a)=>x+a.pre_qnp,0)/pre.length:null,
+        post:post.length?post.reduce((x,a)=>x+a.post_qnp,0)/post.length:null};
+    });
+  }else{
+    byScore=[0,1,2].map(v=>{
+      const arr=withS.filter(a=>a.s===v);
+      const pre=arr.filter(a=>a.pre_qnp!=null),post=arr.filter(a=>a.post_qnp!=null);
+      return {v,count:arr.length,
+        pre:pre.length?pre.reduce((x,a)=>x+a.pre_qnp,0)/pre.length:null,
+        post:post.length?post.reduce((x,a)=>x+a.post_qnp,0)/post.length:null};
+    });
+  }
+  // KPI cards
+  const kpi=(l,v,d)=>`<div class="kpi"><div class="label">${l}</div><div class="val">${v}</div><div class="delta">${d||""}</div></div>`;
+  const totalScorePct=n?(100*withS.reduce((x,a)=>x+a.s,0)/(n*(allMode?2:1)*(allMode?1:2))):(null);
+  const tsp=n?(allMode
+    ?(withS.reduce((x,a)=>x+a.s,0)/n).toFixed(1)+"%"
+    :(100*withS.reduce((x,a)=>x+a.s,0)/(n*2)).toFixed(1)+"%"):"—";
+  document.getElementById("p-kpis").innerHTML=
+    kpi("Audits scored",n,`${PARAM_AUDITS.length} total audits`)+
+    kpi("Total Score %",tsp,allMode?"mean audit score %":`param score sum ÷ (2 × ${n})`)+
+    (allMode
+      ?kpi("Audits ≥85",n?Math.round(100*withS.filter(a=>a.s>=85).length/n)+"%":"—",`${withS.filter(a=>a.s>=85).length} audits`)+
+       kpi("Audits <70",n?Math.round(100*withS.filter(a=>a.s<70).length/n)+"%":"—",`${withS.filter(a=>a.s<70).length} audits`)
+      :kpi("Partially (score 1)",n?Math.round(100*n1/n)+"%":"—",`${n1} audits`)+
+       kpi("Non-compliance (score 0)",n?Math.round(100*n0/n)+"%":"—",`${n0} audits`));
+  // score-level IGCC table
+  const rows=byScore.filter(b=>b.count>0);
+  if(allMode){
+    document.querySelector("#tbl-pigcc thead").innerHTML="<tr><th>Score bucket</th><th>Mean score %</th><th class='num'>Audits</th><th class='num'>IGCC pre %</th><th class='num'>IGCC post %</th><th class='num'>Δ (pp)</th></tr>";
+    document.querySelector("#tbl-pigcc tbody").innerHTML=rows.map(b=>{
+      const d=(b.post!=null&&b.pre!=null)?(100*(b.post-b.pre)):null;
+      return `<tr><td><strong>${b.v}</strong></td><td>${b.mean==null?"—":b.mean.toFixed(1)+"%"}</td><td class="num">${b.count}</td><td class="num">${fmtPct(b.pre)}</td><td class="num">${fmtPct(b.post)}</td><td class="num">${d==null?"—":(d>=0?"+":"")+d.toFixed(2)}</td></tr>`;
+    }).join("")||"<tr><td colspan='6' style='text-align:center;color:var(--ink-3)'>No scored audits in current filter</td></tr>";
+  }else{
+    document.querySelector("#tbl-pigcc thead").innerHTML="<tr><th>Score</th><th>Meaning</th><th class='num'>Audits</th><th class='num'>IGCC pre %</th><th class='num'>IGCC post %</th><th class='num'>Δ (pp)</th></tr>";
+    document.querySelector("#tbl-pigcc tbody").innerHTML=rows.map(b=>{
+      const d=(b.post!=null&&b.pre!=null)?(100*(b.post-b.pre)):null;
+      return `<tr><td>${scoreBadge(b.v)}</td><td>${SCORE_LBL[b.v]}</td><td class="num">${b.count}</td><td class="num">${fmtPct(b.pre)}</td><td class="num">${fmtPct(b.post)}</td><td class="num">${d==null?"—":(d>=0?"+":"")+d.toFixed(2)}</td></tr>`;
+    }).join("")||"<tr><td colspan='6' style='text-align:center;color:var(--ink-3)'>No scored audits in current filter</td></tr>";
+  }
+  // city-wise
+  const cities=[...new Set(withS.map(a=>a.city2))].sort();
+  const cRows=cities.map(c=>{
+    const arr=withS.filter(a=>a.city2===c);
+    const pre=arr.filter(a=>a.pre_qnp!=null),post=arr.filter(a=>a.post_qnp!=null);
+    const total=arr.reduce((x,a)=>x+a.s,0), maxTotal=arr.length*2;
+    return {c,n:arr.length,
+      totalPct:maxTotal?100*total/maxTotal:null,
+      pre:pre.length?pre.reduce((x,a)=>x+a.pre_qnp,0)/pre.length:null,
+      post:post.length?post.reduce((x,a)=>x+a.post_qnp,0)/post.length:null};
+  }).sort((a,b)=>(b.totalPct||0)-(a.totalPct||0));
+  document.querySelector("#tbl-pcity thead").innerHTML="<tr><th>City</th><th class='num'>Audits</th><th class='num'>Total Score %</th><th class='num'>IGCC pre %</th><th class='num'>IGCC post %</th></tr>";
+  document.querySelector("#tbl-pcity tbody").innerHTML=cRows.map(r=>
+    `<tr><td>${r.c||"—"}</td><td class="num">${r.n}</td><td class="num">${r.totalPct==null?"—":colorScore(r.totalPct)}</td><td class="num">${fmtPct(r.pre)}</td><td class="num">${fmtPct(r.post)}</td></tr>`).join("");
+  // pod-wise: one row per pod, scores across its audits for this param + igcc
+  const podMap=new Map();
+  const nameById=new Map(S.map(s=>[s.id,s.name]));
+  withS.forEach(a=>{
+    if(!podMap.has(a.store_id))podMap.set(a.store_id,{id:a.store_id,name:nameById.get(a.store_id),city2:a.city2,tier:a.tier,audits:[],pre:[],post:[]});
+    const p=podMap.get(a.store_id);
+    p.audits.push(a);
+    if(a.pre_qnp!=null)p.pre.push(a.pre_qnp);
+    if(a.post_qnp!=null)p.post.push(a.post_qnp);
+  });
+  const pods=[...podMap.values()].map(p=>{
+    const scores=p.audits.map(a=>a.s);
+    const avg=scores.reduce((x,y)=>x+y,0)/scores.length;
+    const first=p.audits[0],second=p.audits[1]||null;
+    return {id:p.id,name:p.name,city2:p.city2,tier:p.tier,s1:first.s,s2:second?second.s:null,
+      sAvg:avg,sc:second?(second.s-first.s):null,
+      pre:p.pre.length?p.pre.reduce((x,y)=>x+y,0)/p.pre.length:null,
+      post:p.post.length?p.post.reduce((x,y)=>x+y,0)/p.post.length:null};
+  });
+  const COLS_P=[
+    {k:"id",t:"Pod ID",fmt:v=>"#"+v},
+    {k:"name",t:"Pod Name",fmt:v=>v||"—"},
+    {k:"city2",t:"Region",fmt:v=>v||"—"},
+    {k:"tier",t:"Tier",fmt:v=>v||"—"},
+    {k:"s1",t:allMode?"Score 1 (%)":"Score 1st",num:1,fmt:allMode?colorScore:scoreBadge},
+    {k:"s2",t:allMode?"Score 2 (%)":"Score 2nd",num:1,fmt:allMode?colorScore:scoreBadge},
+    {k:"pre",t:"IGCC pre %",num:1,fmt:v=>fmtPct(v)},
+    {k:"post",t:"IGCC post %",num:1,fmt:v=>fmtPct(v)},
+  ];
+  pods.sort((a,b)=>{const av=a[pSortKey],bv=b[pSortKey];if(av==null)return 1;if(bv==null)return -1;if(typeof av==="string")return pSortDir*String(av).localeCompare(String(bv));return pSortDir*(av-bv)});
+  document.querySelector("#tbl-ppod thead").innerHTML="<tr>"+COLS_P.map(c=>`<th data-k="${c.k}" class="${c.num?"num":""}">${c.t}</th>`).join("")+"</tr>";
+  document.querySelector("#tbl-ppod tbody").innerHTML=pods.slice(0,400).map(s=>"<tr>"+COLS_P.map(c=>`<td class="${c.num?"num":""}">${c.fmt(s[c.k],s)}</td>`).join("")+"</tr>").join("");
+  document.querySelectorAll("#tbl-ppod th").forEach(th=>th.onclick=()=>{const k=th.dataset.k;if(pSortKey===k)pSortDir*=-1;else{pSortKey=k;pSortDir=-1}renderParam()});
+  document.getElementById("btn-csv-param").onclick=()=>{
+    const rows=[COLS_P.map(c=>c.t)].concat(pods.map(s=>COLS_P.map(c=>s[c.k]==null?"":(typeof s[c.k]==="number"&&c.k!=="id"?s[c.k].toFixed(3):s[c.k]))));
+    const blob=new Blob([rows.map(r=>r.join(",")).join("\n")],{type:"text/csv"});
+    const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="param_pod_wise.csv";a.click();
+  };
+  document.getElementById("p-def").textContent=allMode
+    ?`All parameters (aggregate) — ${n} audit${n===1?"":"s"} in view. Score = mean of all parameter scores, scaled to audit score % .`
+    :`${name} — ${n} scored audit${n===1?"":"s"} in view (score 2 = Compliance, 1 = Partially, 0 = Non-Compliance).`;
+}
+initParamUI();
 
 // ---------- detail table ----------
 let sortKey="a1s",sortDir=-1;
@@ -413,7 +622,7 @@ function renderTable(){
 }
 
 function renderAll(){
-  renderKpis();renderTable12();renderTable();
+  renderKpis();renderTable12();renderTable();renderParam();
   const n=applyKpiScope(filtered()).length;
   document.getElementById("f-count").textContent=`${n} pod${n===1?"":"s"} in view`+(!kpiScope?"":" · KPI filter: "+kpiScope+" (click card again to clear)");
 }
