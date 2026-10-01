@@ -12,7 +12,7 @@ import numpy as np
 import pandas as pd
 
 BASE = r"C:\Users\lavanya.sl\Documents\Audit Score - IGCC analysis"
-WIDE = BASE + r"\Audit response wide\Pod Audit Tool - Audit Responses (Wide).csv"
+WIDE = BASE + r"\Audit response wide\Pod Audit Tool - Audit Responses (Wide) (2).csv"
 IGCC = BASE + r"\Store IGCC\IGCC _Daily Summary - Store inc (1).csv"
 WINDOW_DAYS = 7
 SEED = 42
@@ -53,6 +53,17 @@ pa = pd.read_csv(BASE + r"\per_audit_igcc.csv")
 pa["audit_date"] = pd.to_datetime(pa["audit_date"])
 names = aud.groupby("Store ID")["Store Name"].agg(lambda s: s.dropna().iloc[0] if s.dropna().size else "")
 
+# names from the raw file too — pods with an audit row that was dropped for a
+# missing date/score still have a usable store name
+raw = pd.read_csv(WIDE, encoding="utf-8-sig", low_memory=False)
+raw.columns = [c.strip() for c in raw.columns]
+raw["Store ID"] = pd.to_numeric(raw["Store ID"], errors="coerce").astype("Int64")
+raw_names = raw.groupby("Store ID")["Store Name"].agg(lambda s: s.dropna().iloc[0] if s.dropna().size else "")
+all_names = raw_names.to_dict()
+for k, v in names.items():
+    if v and pd.notna(k):
+        all_names[int(k)] = v
+
 rows = []
 
 # --- audited pods: pre of 1st audit, post of last audit ---
@@ -68,7 +79,7 @@ for store_id, grp in pa.groupby("store_id"):
         "post": last["post_qnp"],
         "city2": meta["CITY_2"].iloc[0] if not meta.empty else "",
         "tier": meta["TIER"].iloc[0] if not meta.empty else "",
-        "name": str(names.get(store_id, "")),
+        "name": str(all_names.get(int(store_id), "")),
         "pseudo": False,
     })
 
@@ -89,7 +100,7 @@ for store_id in never_ids:
         "post": post,
         "city2": meta["CITY_2"].iloc[0] if not meta.empty else "",
         "tier": meta["TIER"].iloc[0] if not meta.empty else "",
-        "name": "",
+        "name": str(all_names.get(int(store_id), "")),
         "pseudo": True,
     })
 

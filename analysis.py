@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 
 BASE = r"C:\Users\lavanya.sl\Documents\Audit Score - IGCC analysis"
-AUDIT = BASE + r"\Audit response wide\Pod Audit Tool - Audit Responses (Wide).csv"
+AUDIT = BASE + r"\Audit response wide\Pod Audit Tool - Audit Responses (Wide) (2).csv"
 IGCC = BASE + r"\Store IGCC\IGCC _Daily Summary - Store inc (1).csv"
 
 # ---------- Audit data ----------
@@ -69,8 +69,8 @@ print(f"IGCC date range: {ig['ORDER_DATE'].min().date()} -> {ig['ORDER_DATE'].ma
 # ---------- Per-audit IGCC windows ----------
 # Window length = gap between adjacent audits for that pod. E.g. 1st audit Sep 1,
 # 2nd audit Sep 13 -> 12-day gap -> pre/post windows of 12 days for each audit.
-# Fallback for pods with a single audit (no gap to derive):
-WINDOW_DAYS = 7
+# If the next audit hasn't happened yet (last audit so far), the window length is
+# the days from the audit date up to today (the date the dashboard is viewed).
 
 results = []
 for store_id, grp in aud.groupby("Store ID"):
@@ -81,14 +81,12 @@ for store_id, grp in aud.groupby("Store ID"):
     for i, (_, row) in enumerate(audits.iterrows(), start=1):
         a_date = row["Date"]
         nxt = audits[audits["Date"] > a_date]
-        prv = audits[audits["Date"] < a_date]
-        # gap-based window: distance to the neighbouring audit; fallback 14
+        # gap-based window: distance to the next audit; if none yet, days elapsed
+        # since the audit (so the "post" window stretches to the present)
         if not nxt.empty:
             gap = (nxt.iloc[0]["Date"] - a_date).days
-        elif not prv.empty:
-            gap = (a_date - prv.iloc[-1]["Date"]).days
         else:
-            gap = WINDOW_DAYS
+            gap = (pd.Timestamp.today().normalize() - a_date).days
         gap = max(gap, 1)
         pre = g.loc[(g.index >= a_date - pd.Timedelta(days=gap)) & (g.index < a_date)]
         post = g.loc[(g.index > a_date) & (g.index <= a_date + pd.Timedelta(days=gap))]

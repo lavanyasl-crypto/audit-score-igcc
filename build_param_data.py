@@ -4,9 +4,8 @@ import numpy as np
 import pandas as pd
 
 BASE = r"C:\Users\lavanya.sl\Documents\Audit Score - IGCC analysis"
-WIDE = BASE + r"\Audit response wide\Pod Audit Tool - Audit Responses (Wide).csv"
+WIDE = BASE + r"\Audit response wide\Pod Audit Tool - Audit Responses (Wide) (2).csv"
 IGCC = BASE + r"\Store IGCC\IGCC _Daily Summary - Store inc (1).csv"
-WINDOW_DAYS = 14
 
 aud = pd.read_csv(WIDE, encoding="utf-8-sig", low_memory=False)
 aud.columns = [c.strip() for c in aud.columns]
@@ -41,9 +40,8 @@ store_meta = ig.groupby("STORE_ID").agg(CITY_2=("CITY_2", "first"), TIER=("TIER"
 
 # per-audit IGCC windows
 # Window length = gap between adjacent audits for that pod (e.g. Sep 1 -> Sep 13
-# = 12-day gap -> 12-day pre and post windows). Fallback 7 for single-audit pods.
-WINDOW_DAYS = 7  # fallback
-
+# = 12-day gap -> 12-day pre and post windows). If no next audit yet, the window
+# length is the days from the audit date up to today.
 results = []
 for store_id, grp in aud.groupby("Store ID"):
     g = daily_igcc[daily_igcc["STORE_ID"] == store_id].set_index("ORDER_DATE")
@@ -54,13 +52,10 @@ for store_id, grp in aud.groupby("Store ID"):
     for i, (_, row) in enumerate(audits.iterrows(), start=1):
         a_date = row["Date"]
         nxt = audits[audits["Date"] > a_date]
-        prv = audits[audits["Date"] < a_date]
         if not nxt.empty:
             gap = (nxt.iloc[0]["Date"] - a_date).days
-        elif not prv.empty:
-            gap = (a_date - prv.iloc[-1]["Date"]).days
         else:
-            gap = WINDOW_DAYS
+            gap = (pd.Timestamp.today().normalize() - a_date).days
         gap = max(gap, 1)
         pre = g.loc[(g.index >= a_date - pd.Timedelta(days=gap)) & (g.index < a_date)]
         post = g.loc[(g.index > a_date) & (g.index <= a_date + pd.Timedelta(days=gap))]
