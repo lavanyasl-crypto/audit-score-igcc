@@ -412,13 +412,13 @@ function renderKpis(){
     postAvg=paired.length?paired.reduce((x,a)=>x+a.post,0)/paired.length:null;
   }
   const pd=(postAvg!=null&&preAvg!=null)?(postAvg-preAvg)/preAvg*100:null;
-  const audStores=st.length, two=st.filter(s=>s.n>=2).length;
+  const audStores=st.length;
   const firstKpi=unauditedMode
-    ?kpiHTML("Stores not audited",audStores.toLocaleString(),null,`${paired.length} with IGCC data · control group`)+
-     kpiHTML("Total audits","0",null,"never audited")+
-     kpiHTML("Avg score — 1st audit","—",null,"no audits")
-    :kpiHTML("Stores audited",audStores.toLocaleString(),null,`${two} audited 2+ times`)+
-     kpiHTML("Total audits",au.length.toLocaleString(),null,`${au2.length} first audits`)+
+    ?kpiHTML("Stores not audited",audStores.toLocaleString())+
+     kpiHTML("Total audits","0")+
+     kpiHTML("Avg score — 1st audit","—")
+    :kpiHTML("Stores audited",audStores.toLocaleString())+
+     kpiHTML("Total audits",au.length.toLocaleString())+
      kpiHTML("Avg score — 1st audit",s1avg==null?"—":s1avg.toFixed(1)+"%",null,"overall audit score","first");
   document.getElementById("kpis").innerHTML=
     firstKpi+

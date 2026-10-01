@@ -125,8 +125,10 @@ per_audit = pd.DataFrame(results)
 store_rows = []
 for store_id, grp in aud.groupby("Store ID"):
     g = grp.sort_values("Date")
-    first = g.iloc[0]
-    last = g.iloc[-1]
+    # count distinct audit dates only — same-day rows are duplicate submissions
+    audits_dedup = g.drop_duplicates(subset=["Date"], keep="first")
+    first = audits_dedup.iloc[0]
+    last = audits_dedup.iloc[-1]
     s_meta = store_meta[store_meta["STORE_ID"] == store_id]
     city2 = s_meta["CITY_2"].iloc[0] if not s_meta.empty else ""
     tier = s_meta["TIER"].iloc[0] if not s_meta.empty else ""
@@ -137,12 +139,12 @@ for store_id, grp in aud.groupby("Store ID"):
         "city": first["City"],
         "city_2": city2,
         "tier": tier,
-        "n_audits": len(g),
+        "n_audits": len(audits_dedup),
         "audit1_date": first["Date"].strftime("%Y-%m-%d"),
         "audit1_score": first["Score %"],
         "audit1_fnv": first["FNV_Compliance_Pct"],
-        "audit2_score": g.iloc[1]["Score %"] if len(g) > 1 else None,
-        "audit2_fnv": g.iloc[1]["FNV_Compliance_Pct"] if len(g) > 1 else None,
+        "audit2_score": audits_dedup.iloc[1]["Score %"] if len(audits_dedup) > 1 else None,
+        "audit2_fnv": audits_dedup.iloc[1]["FNV_Compliance_Pct"] if len(audits_dedup) > 1 else None,
         "audit_last_date": last["Date"].strftime("%Y-%m-%d"),
         "audit_last_score": last["Score %"],
         "audit1_pre_qnp": pa[pa["audit_no"] == 1]["pre_qnp"].values[0] if len(pa) else None,
