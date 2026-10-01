@@ -358,7 +358,13 @@ function filtered(){
     return true;
   });
 }
-function fIds(){return new Set(filtered().map(s=>s.id))}
+function fIds(){
+  const st=filtered();
+  if(fAud.value==="0")return new Set();
+  if(!fAud.value)return new Set(st.map(s=>s.id));
+  // "1 audit only"/"2+" already applied inside filtered() via s.n
+  return new Set(st.map(s=>s.id));
+}
 function fAudits(){
   const ids=fIds();
   return A.filter(a=>ids.has(a.id)&&a.score!=null&&dateInRange(a.date));
@@ -471,6 +477,7 @@ document.querySelectorAll("#section-tabs .tab").forEach(btn=>{
     document.getElementById("sec-param").hidden=btn.dataset.tab!=="sec-param";
     document.getElementById("sec-groups").hidden=btn.dataset.tab!=="sec-groups";
     if(btn.dataset.tab==="sec-param")renderParam();
+    if(btn.dataset.tab==="sec-groups")renderGroups();
   });
 });
 
@@ -511,7 +518,8 @@ function paramAudits(){
   const ids=fIds();
   return PARAM_AUDITS.filter(a=>ids.has(a.store_id)&&dateInRange(a.audit_date)
     &&(!pCities.size||pCities.has(a.city2))&&(!pPods.size||pPods.has(String(a.store_id)))
-    &&(!fTier.value||a.tier===fTier.value));
+    &&(!fTier.value||a.tier===fTier.value)
+    &&(fAud.value!=="1"||a.audit_no===1)&&(fAud.value!=="2"||a.audit_no>=2));
 }
 function renderParam(){
   const allMode=pIdxs.has(-1)||!pIdxs.size;
@@ -644,9 +652,25 @@ let gSortKey="id",gSortDir=1;
 const GP=AUDIT_GROUPS.map(r=>({id:r.id,name:r.name,n:r.n,date:r.date,pre:r.pre,post:r.post,
   city2:r.city2,tier:r.tier,pseudo:r.pseudo,grp:grpOf(r.n),
   d:(r.pre!=null&&r.post!=null)?(r.post-r.pre)*100:null}));
+function gFiltered(){
+  const pods=msPod.selected,podsOn=pods.size>0,cities=msCity.selected,citiesOn=cities.size>0;
+  return GP.filter(p=>{
+    if(podsOn&&!pods.has(p.id))return false;
+    if(citiesOn&&!cities.has(p.city2))return false;
+    if(fTier.value&&p.tier!==fTier.value)return false;
+    if(!dateInRange(p.date))return false;
+    if(fAud.value==="0")return p.grp===0;
+    if(fAud.value==="1")return p.grp===1;
+    if(fAud.value==="2")return p.grp===2;
+    return true;
+  });
+}
 function renderGroups(){
-  const gk=[0,1,2].map(g=>{
-    const arr=GP.filter(p=>p.grp===g);
+  const pool=gFiltered();
+  const showAll=!fAud.value;
+  const grps=showAll?[0,1,2]:(fAud.value==="0"?[0]:fAud.value==="1"?[1]:[2]);
+  const gk=grps.map(g=>{
+    const arr=pool.filter(p=>p.grp===g);
     const pd_=arr.filter(p=>p.pre!=null&&p.post!=null);
     const pre=pd_.length?pd_.reduce((x,p)=>x+p.pre,0)/pd_.length:null;
     const post=pd_.length?pd_.reduce((x,p)=>x+p.post,0)/pd_.length:null;
@@ -673,9 +697,9 @@ function renderGroups(){
     {k:"d",t:"Δ IGCC (pp)",num:1,fmt:v=>v==null?"—":`<span class="badge ${v<=0?"b-good":"b-bad"}">${v>=0?"+":""}${v.toFixed(2)}</span>`},
   ];
   COLS_G[5].t=GP.some(p=>p.pseudo)?"Audit / pseudo date":"Audit date";
-  GP.sort((a,b)=>{const av=a[gSortKey],bv=b[gSortKey];if(av==null)return 1;if(bv==null)return -1;if(typeof av==="string")return gSortDir*String(av).localeCompare(String(bv));return gSortDir*(av-bv)});
+  pool.sort((a,b)=>{const av=a[gSortKey],bv=b[gSortKey];if(av==null)return 1;if(bv==null)return -1;if(typeof av==="string")return gSortDir*String(av).localeCompare(String(bv));return gSortDir*(av-bv)});
   document.querySelector("#tbl-gpods thead").innerHTML="<tr>"+COLS_G.map(c=>`<th data-k="${c.k}" class="${c.num?"num":""}">${c.t}</th>`).join("")+"</tr>";
-  document.querySelector("#tbl-gpods tbody").innerHTML=GP.map(s=>"<tr>"+COLS_G.map(c=>`<td class="${c.num?"num":""}">${c.fmt(s[c.k],s)}</td>`).join("")+"</tr>").join("");
+  document.querySelector("#tbl-gpods tbody").innerHTML=pool.map(s=>"<tr>"+COLS_G.map(c=>`<td class="${c.num?"num":""}">${c.fmt(s[c.k],s)}</td>`).join("")+"</tr>").join("");
   document.querySelectorAll("#tbl-gpods th").forEach(th=>th.onclick=()=>{const k=th.dataset.k;if(gSortKey===k)gSortDir*=-1;else{gSortKey=k;gSortDir=-1}renderGroups()});
   document.getElementById("btn-csv-groups").onclick=()=>{
     const rows=[COLS_G.map(c=>c.t)].concat(GP.map(s=>COLS_G.map(c=>s[c.k]==null?"":(typeof s[c.k]==="number"?s[c.k].toFixed(5):s[c.k]))));
@@ -721,7 +745,7 @@ function renderTable(){
 }
 
 function renderAll(){
-  renderKpis();renderTable12();renderTable();renderParam();
+  renderKpis();renderTable12();renderTable();renderParam();renderGroups();
   const n=applyKpiScope(filtered()).length;
   document.getElementById("f-count").textContent=`${n} pod${n===1?"":"s"} in view`+(!kpiScope?"":" · KPI filter: "+kpiScope+" (click card again to clear)");
 }
