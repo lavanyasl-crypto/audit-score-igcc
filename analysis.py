@@ -67,7 +67,10 @@ print(f"IGCC rows: {len(ig)}, stores: {daily_igcc['STORE_ID'].nunique()}")
 print(f"IGCC date range: {ig['ORDER_DATE'].min().date()} -> {ig['ORDER_DATE'].max().date()}")
 
 # ---------- Per-audit IGCC windows ----------
-WINDOW_DAYS = 14  # IGCC window: audit date +/- 14 days? we use post 1..14 and pre -14..-1
+# Window length = gap between adjacent audits for that pod. E.g. 1st audit Sep 1,
+# 2nd audit Sep 13 -> 12-day gap -> pre/post windows of 12 days for each audit.
+# Fallback DEFAULT_WINDOW_DAYS for pods with a single audit (no gap to derive).
+WINDOW_DAYS = 14  # fallback
 
 results = []
 for store_id, grp in aud.groupby("Store ID"):
@@ -77,13 +80,21 @@ for store_id, grp in aud.groupby("Store ID"):
     audits = grp.sort_values("Date").drop_duplicates(subset=["Date"], keep="first")
     for i, (_, row) in enumerate(audits.iterrows(), start=1):
         a_date = row["Date"]
-        pre = g.loc[(g.index >= a_date - pd.Timedelta(days=WINDOW_DAYS)) & (g.index < a_date)]
-        post = g.loc[(g.index > a_date) & (g.index <= a_date + pd.Timedelta(days=WINDOW_DAYS))]
-        # guard: post window must not spill into next audit
         nxt = audits[audits["Date"] > a_date]
+        prv = audits[audits["Date"] < a_date]
+        # gap-based window: distance to the neighbouring audit; fallback 14
         if not nxt.empty:
-            next_date = nxt.iloc[0]["Date"]
-            post = post.loc[post.index < next_date]
+            gap = (nxt.iloc[0]["Date"] - a_date).days
+        elif not prv.empty:
+            gap = (a_date - prv.iloc[-1]["Date"]).days
+        else:
+            gap = WINDOW_DAYS
+        gap = max(gap, 1)
+        pre = g.loc[(g.index >= a_date - pd.Timedelta(days=gap)) & (g.index < a_date)]
+        post = g.loc[(g.index > a_date) & (g.index <= a_date + pd.Timedelta(days=gap))]
+        # guard: post window must not include the next audit date itself
+        if not nxt.empty:
+            post = post.loc[post.index < nxt.iloc[0]["Date"]]
         def agg(w):
             if w.empty:
                 return (np.nan, np.nan, 0)

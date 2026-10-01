@@ -173,7 +173,7 @@ tr:hover td{background:#F7F9F8}
 
 <section class="row" id="sec-detail" hidden>
   <div class="card">
-    <div class="card-head"><div><h2>Audited Pods — Score &amp; IGCC Detail</h2><div class="note">Click column headers to sort. IGCC % = QNP in 14-day window around audit date.</div></div>
+    <div class="card-head"><div><h2>Audited Pods — Score &amp; IGCC Detail</h2><div class="note">Click column headers to sort. IGCC % = QNP in the audit-gap window around audit date.</div></div>
       <div class="controls"><button class="pill" id="btn-csv" style="cursor:pointer">↓ Export CSV</button></div>
     </div>
     <div class="tbl-scroll"><table id="tbl"><thead></thead><tbody></tbody></table></div>
@@ -205,7 +205,7 @@ tr:hover td{background:#F7F9F8}
     <div class="p-note" id="p-def"></div>
     <div class="row-2" style="margin-top:14px">
       <div class="card" style="box-shadow:none">
-        <div class="card-head"><div><h3 style="margin:0 0 6px;font-size:14px">IGCC (QNP %) by parameter score</h3><div class="note">Avg IGCC in 14-day pre/post windows for audits scoring 0 / 1 / 2.</div></div></div>
+        <div class="card-head"><div><h3 style="margin:0 0 6px;font-size:14px">IGCC (QNP %) by parameter score</h3><div class="note">Avg IGCC in audit-gap pre/post windows for audits scoring 0 / 1 / 2.</div></div></div>
         <div class="tbl-scroll" style="max-height:320px"><table id="tbl-pigcc"><thead></thead><tbody></tbody></table></div>
       </div>
       <div class="card" style="box-shadow:none">
@@ -221,7 +221,7 @@ tr:hover td{background:#F7F9F8}
   </div>
 </section>
 
-<div class="footer-note">Windows: pre = 14 days before audit, post = 14 days after (capped at next audit). QNP = IGCC orders ÷ total FnV orders. Score % = overall pod audit score. FNV% = FnV-section compliance.</div>
+<div class="footer-note">Windows: pre = the audit gap before the audit, post = the audit gap after (capped at the next audit date; 14 days for pods with a single audit). QNP = IGCC orders ÷ total FnV orders. Score % = overall pod audit score. FNV% = FnV-section compliance.</div>
 
 <script src="dashboard_data.js"></script>
 <script src="param_data.js"></script>
@@ -379,7 +379,7 @@ function renderKpis(){
     kpiHTML("Total audits",au.length.toLocaleString(),null,`${au2.length} first audits`)+
     kpiHTML("Avg score — 1st audit",s1avg==null?"—":s1avg.toFixed(1)+"%",null,"overall audit score","first")+
     kpiHTML("Avg score — 2nd audit",s2avg==null?"—":s2avg.toFixed(1)+"%",d==null?"flat":(d>=0?"up":"down"),d==null?"no 2nd audits in filter":"click: 2nd-audit pods","second")+
-    kpiHTML("IGCC before audit",fmtPct(preAvg),"flat","14-day avg QNP","pre")+
+    kpiHTML("IGCC before audit",fmtPct(preAvg),"flat","audit-gap avg QNP","pre")+
     kpiHTML("IGCC after audit",fmtPct(postAvg),pd==null?"flat":(pd<=0?"up":"down"),pd==null?"—":`${pd>=0?"+":""}${pd.toFixed(1)}% change`,"post");
   document.querySelectorAll("#kpis .kpi[data-scope]").forEach(el=>{
     el.onclick=()=>{

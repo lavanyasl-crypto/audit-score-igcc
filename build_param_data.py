@@ -40,6 +40,10 @@ daily_igcc["qnp"] = daily_igcc["orders_igcc"] / daily_igcc["orders_total"].repla
 store_meta = ig.groupby("STORE_ID").agg(CITY_2=("CITY_2", "first"), TIER=("TIER", "first")).reset_index()
 
 # per-audit IGCC windows
+# Window length = gap between adjacent audits for that pod (e.g. Sep 1 -> Sep 13
+# = 12-day gap -> 12-day pre and post windows). Fallback 14 for single-audit pods.
+WINDOW_DAYS = 14  # fallback
+
 results = []
 for store_id, grp in aud.groupby("Store ID"):
     g = daily_igcc[daily_igcc["STORE_ID"] == store_id].set_index("ORDER_DATE")
@@ -49,9 +53,17 @@ for store_id, grp in aud.groupby("Store ID"):
     audits = grp.sort_values("Date").drop_duplicates(subset=["Date"], keep="first")
     for i, (_, row) in enumerate(audits.iterrows(), start=1):
         a_date = row["Date"]
-        pre = g.loc[(g.index >= a_date - pd.Timedelta(days=WINDOW_DAYS)) & (g.index < a_date)]
-        post = g.loc[(g.index > a_date) & (g.index <= a_date + pd.Timedelta(days=WINDOW_DAYS))]
         nxt = audits[audits["Date"] > a_date]
+        prv = audits[audits["Date"] < a_date]
+        if not nxt.empty:
+            gap = (nxt.iloc[0]["Date"] - a_date).days
+        elif not prv.empty:
+            gap = (a_date - prv.iloc[-1]["Date"]).days
+        else:
+            gap = WINDOW_DAYS
+        gap = max(gap, 1)
+        pre = g.loc[(g.index >= a_date - pd.Timedelta(days=gap)) & (g.index < a_date)]
+        post = g.loc[(g.index > a_date) & (g.index <= a_date + pd.Timedelta(days=gap))]
         if not nxt.empty:
             post = post.loc[post.index < nxt.iloc[0]["Date"]]
         def agg(w):
