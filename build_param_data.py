@@ -41,8 +41,8 @@ store_meta = ig.groupby("STORE_ID").agg(CITY_2=("CITY_2", "first"), TIER=("TIER"
 
 # per-audit IGCC windows
 # Window length = gap between adjacent audits for that pod (e.g. Sep 1 -> Sep 13
-# = 12-day gap -> 12-day pre and post windows). Fallback 14 for single-audit pods.
-WINDOW_DAYS = 14  # fallback
+# = 12-day gap -> 12-day pre and post windows). Fallback 7 for single-audit pods.
+WINDOW_DAYS = 7  # fallback
 
 results = []
 for store_id, grp in aud.groupby("Store ID"):

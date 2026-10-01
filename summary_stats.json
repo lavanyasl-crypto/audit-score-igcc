@@ -1,6 +1,6 @@
 {
-  "corr_score_vs_pre_qnp": -0.216,
-  "corr_score_vs_post_qnp": -0.203,
+  "corr_score_vs_pre_qnp": -0.214,
+  "corr_score_vs_post_qnp": -0.207,
   "n_stores": 768,
   "avg_score_audit1": 75.4,
   "n_stores_2audits": 103,

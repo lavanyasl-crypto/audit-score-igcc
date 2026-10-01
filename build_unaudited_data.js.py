@@ -4,7 +4,7 @@ not audited (control, pseudo audit date), 1 audit, 2+ audits.
 Audited pods: pre = pre-window IGCC of 1st audit, post = post-window IGCC of
 last audit (gap-based windows from analysis.py, via per_audit_igcc.csv).
 Unaudited pods: pseudo audit date drawn uniformly from the audit period
-(deterministic seed), 14-day pre/post windows — a control so seasonality
+(deterministic seed), 7-day pre/post windows — a control so seasonality
 cancels out when comparing groups.
 """
 import json
@@ -14,7 +14,7 @@ import pandas as pd
 BASE = r"C:\Users\lavanya.sl\Documents\Audit Score - IGCC analysis"
 WIDE = BASE + r"\Audit response wide\Pod Audit Tool - Audit Responses (Wide).csv"
 IGCC = BASE + r"\Store IGCC\IGCC _Daily Summary - Store inc (1).csv"
-WINDOW_DAYS = 14
+WINDOW_DAYS = 7
 SEED = 42
 
 aud = pd.read_csv(WIDE, encoding="utf-8-sig", low_memory=False)
@@ -72,7 +72,7 @@ for store_id, grp in pa.groupby("store_id"):
         "pseudo": False,
     })
 
-# --- never-audited pods: pseudo audit date, 14-day windows ---
+# --- never-audited pods: pseudo audit date, 7-day windows ---
 audited_ids = set(pa["store_id"].astype(int))
 rng = np.random.default_rng(SEED)
 never_ids = sorted(set(store_meta["STORE_ID"].astype(int)) - audited_ids)

@@ -224,7 +224,7 @@ tr:hover td{background:#F7F9F8}
 
 <section class="row" id="sec-groups" hidden>
   <div class="card">
-    <div class="card-head"><div><h2>IGCC Change — Audited vs Not Audited</h2><div class="note">Pre vs post IGCC (QNP %) for three groups: pods never audited (control — pseudo audit date drawn from the audit period, 14-day windows), pods audited once, and pods audited 2+ times. Audited pods use the audit-gap windows around their 1st / last audit.</div></div></div>
+    <div class="card-head"><div><h2>IGCC Change — Audited vs Not Audited</h2><div class="note">Pre vs post IGCC (QNP %) for three groups: pods never audited (control — pseudo audit date drawn from the audit period, 7-day windows), pods audited once, and pods audited 2+ times. Audited pods use the audit-gap windows around their 1st / last audit; pods with a single audit use 7-day windows.</div></div></div>
     <div class="grid kpis" id="g-kpis"></div>
     <div class="tbl-scroll" style="max-height:420px;margin-top:8px"><table id="tbl-groups"><thead></thead><tbody></tbody></table></div>
     <div class="card" style="box-shadow:none;margin-top:14px">
@@ -235,7 +235,7 @@ tr:hover td{background:#F7F9F8}
   </div>
 </section>
 
-<div class="footer-note">Windows: pre/post window length = the gap in days between a pod's 1st and 2nd audit (e.g. audits on Sep 1 and Sep 13 → 12-day pre window before the 1st audit and 12-day post window after the 2nd audit). 14 days for pods with a single audit. QNP = IGCC orders ÷ total FnV orders. Score % = overall pod audit score. FNV% = FnV-section compliance.</div>
+<div class="footer-note">Windows: pre/post window length = the gap in days between a pod's 1st and 2nd audit (e.g. audits on Sep 1 and Sep 13 → 12-day pre window before the 1st audit and 12-day post window after the 2nd audit). 7 days for pods with a single audit or no audit. QNP = IGCC orders ÷ total FnV orders. Score % = overall pod audit score. FNV% = FnV-section compliance.</div>
 
 <script src="dashboard_data.js"></script>
 <script src="param_data.js"></script>
@@ -425,7 +425,7 @@ function renderKpis(){
     (unauditedMode
       ?""
       :kpiHTML("Avg score — 2nd audit",s2avg==null?"—":s2avg.toFixed(1)+"%",d==null?"flat":(d>=0?"up":"down"),d==null?"no 2nd audits in filter":"click: 2nd-audit pods","second"))+
-    kpiHTML("IGCC before audit",fmtPct(preAvg),"flat",unauditedMode?"14-day avg QNP (pseudo date)":"audit-gap avg QNP","pre")+
+    kpiHTML("IGCC before audit",fmtPct(preAvg),"flat",unauditedMode?"7-day avg QNP (pseudo date)":"audit-gap avg QNP","pre")+
     kpiHTML("IGCC after audit",fmtPct(postAvg),pd==null?"flat":(pd<=0?"up":"down"),pd==null?"—":`${pd>=0?"+":""}${pd.toFixed(1)}% change`,"post");
   document.querySelectorAll("#kpis .kpi[data-scope]").forEach(el=>{
     el.onclick=()=>{

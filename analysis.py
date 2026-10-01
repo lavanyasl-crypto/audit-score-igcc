@@ -69,8 +69,8 @@ print(f"IGCC date range: {ig['ORDER_DATE'].min().date()} -> {ig['ORDER_DATE'].ma
 # ---------- Per-audit IGCC windows ----------
 # Window length = gap between adjacent audits for that pod. E.g. 1st audit Sep 1,
 # 2nd audit Sep 13 -> 12-day gap -> pre/post windows of 12 days for each audit.
-# Fallback DEFAULT_WINDOW_DAYS for pods with a single audit (no gap to derive).
-WINDOW_DAYS = 14  # fallback
+# Fallback for pods with a single audit (no gap to derive):
+WINDOW_DAYS = 7
 
 results = []
 for store_id, grp in aud.groupby("Store ID"):
