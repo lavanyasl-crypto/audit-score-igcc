@@ -166,7 +166,7 @@ tr:hover td{background:#F7F9F8}
 
 <section class="row" id="sec-compare">
   <div class="card">
-    <div class="card-head"><div><h2>Audit Score — Pod Comparison</h2><div class="note">Pods audited twice — 1st and 2nd audit scores side by side. Click column headers to sort.</div></div>
+    <div class="card-head"><div><h2>Audit Score — Pod Comparison</h2><div class="note">All audited pods — 1st and 2nd audit scores side by side (pods audited once show the 2nd-audit columns as —). Click column headers to sort.</div></div>
       <div class="controls"><button class="pill" id="btn-csv12" style="cursor:pointer">↓ Export CSV</button></div></div>
     <div class="tbl-scroll" style="max-height:460px"><table id="tbl12"><thead></thead><tbody></tbody></table></div>
   </div>
@@ -445,8 +445,8 @@ const COLS12=[
   {k:"dS",t:"Change",num:1,fmt:(v,s)=>v==null?"—":`<span class="badge ${v>0?"b-bad":v<0?"b-good":"b-mid"}">${v>0?"▲ +":v<0?"▼ ":"● "}${v.toFixed(1)} pts</span>`},
 ];
 function renderTable12(){
-  const st=filtered().filter(s=>s.n>=2&&s.a1s!=null&&s.a2s!=null)
-    .map(s=>({...s,dS:s.a2s-s.a1s,
+  const st=filtered().filter(s=>s.a1s!=null)
+    .map(s=>({...s,dS:(s.a1s!=null&&s.a2s!=null)?s.a2s-s.a1s:null,
       a2d:(function(){const a2=A.find(a=>a.id===s.id&&a.no===2);return a2?a2.date:null})(),
       a1aud:(function(){const a1=A.find(a=>a.id===s.id&&a.no===1);return a1?a1.auditor:null})(),
       a2aud:(function(){const a2=A.find(a=>a.id===s.id&&a.no===2);return a2?a2.auditor:null})()}));
