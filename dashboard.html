@@ -174,7 +174,7 @@ tr:hover td{background:#F7F9F8}
 
 <section class="row" id="sec-detail" hidden>
   <div class="card">
-    <div class="card-head"><div><h2>Audited Pods — Score &amp; IGCC Detail</h2><div class="note">Click column headers to sort. IGCC % = QNP in the audit-gap window around audit date.</div></div>
+    <div class="card-head"><div><h2>Audited Pods — Score &amp; IGCC Detail</h2><div class="note">Click column headers to sort. IGCC % = QNP in the audit-gap window around audit date (window length = days between the pod's 1st and 2nd audit).</div></div>
       <div class="controls"><button class="pill" id="btn-csv" style="cursor:pointer">↓ Export CSV</button></div>
     </div>
     <div class="tbl-scroll"><table id="tbl"><thead></thead><tbody></tbody></table></div>
@@ -206,7 +206,7 @@ tr:hover td{background:#F7F9F8}
     <div class="p-note" id="p-def"></div>
     <div class="row-2" style="margin-top:14px">
       <div class="card" style="box-shadow:none">
-        <div class="card-head"><div><h3 style="margin:0 0 6px;font-size:14px">IGCC (QNP %) by parameter score</h3><div class="note">Avg IGCC in audit-gap pre/post windows for audits scoring 0 / 1 / 2.</div></div></div>
+        <div class="card-head"><div><h3 style="margin:0 0 6px;font-size:14px">IGCC (QNP %) by parameter score</h3><div class="note">Avg IGCC in audit-gap pre/post windows (window = days between the pod's audits) for audits scoring 0 / 1 / 2.</div></div></div>
         <div class="tbl-scroll" style="max-height:320px"><table id="tbl-pigcc"><thead></thead><tbody></tbody></table></div>
       </div>
       <div class="card" style="box-shadow:none">
@@ -235,7 +235,7 @@ tr:hover td{background:#F7F9F8}
   </div>
 </section>
 
-<div class="footer-note">Windows: pre = the audit gap before the audit, post = the audit gap after (capped at the next audit date; 14 days for pods with a single audit). QNP = IGCC orders ÷ total FnV orders. Score % = overall pod audit score. FNV% = FnV-section compliance.</div>
+<div class="footer-note">Windows: pre/post window length = the gap in days between a pod's 1st and 2nd audit (e.g. audits on Sep 1 and Sep 13 → 12-day pre window before the 1st audit and 12-day post window after the 2nd audit). 14 days for pods with a single audit. QNP = IGCC orders ÷ total FnV orders. Score % = overall pod audit score. FNV% = FnV-section compliance.</div>
 
 <script src="dashboard_data.js"></script>
 <script src="param_data.js"></script>
@@ -247,6 +247,11 @@ tr:hover td{background:#F7F9F8}
 const S = STORES.map(r=>({id:r[0],name:r[1],city:r[2],city2:r[3],tier:r[4],n:r[5],a1d:r[6],a1s:r[7],a1f:r[8],a2s:r[9],a2f:r[10],a1pre:r[11],a1post:r[12],a2pre:r[13],a2post:r[14]}));
 const A = AUDITS.map(r=>({id:r[0],no:r[1],date:r[2],city:r[3],auditor:r[4],score:r[5],fnv:r[6],pre:r[7],post:r[8],preOrd:r[9],postOrd:r[10]}));
 const idStore = new Map(S.map(s=>[s.id,s]));
+// unaudited pods (from AUDIT_GROUPS, n=0) mapped to the same shape as S entries
+const S_UNAUDITED = AUDIT_GROUPS.filter(r=>r.n===0).map(r=>({
+  id:r.id,name:r.name||null,city:null,city2:r.city2,tier:r.tier,n:0,
+  a1d:r.date,a1s:null,a1f:null,a2s:null,a2f:null,
+  a1pre:r.pre,a1post:r.post,a2pre:null,a2post:null,unaudited:true}));
 
 const css=getComputedStyle(document.documentElement);
 const C={accent:"#2563eb",accent2:"#7c3aed",good:"#16a34a",bad:"#dc2626",warn:"#d97706",ink3:"#8b95a7"};
@@ -327,11 +332,11 @@ if(allAuditDates.length){
   fTo.value=allAuditDates[allAuditDates.length-1];fTo.min=allAuditDates[0];fTo.max=allAuditDates[allAuditDates.length-1];
 }
 const msCity=createMultiSelect("ms-city",
-  [...new Set(S.map(s=>s.city2))].filter(c=>c&&c!=="NaN"&&c!=="null").sort().map(c=>({value:c,label:c})),
+  [...new Set(S.concat(S_UNAUDITED).map(s=>s.city2))].filter(c=>c&&c!=="NaN"&&c!=="null").sort().map(c=>({value:c,label:c})),
   "All regions",()=>renderAll());
 const msPod=createMultiSelect("ms-pod",
-  S.map(s=>({value:s.id,label:s.name||("Store "+s.id),sub:"#"+s.id})).sort((a,b)=>a.label.localeCompare(b.label)),
-  `All pods (${S.length})`,()=>renderAll());
+  S.concat(S_UNAUDITED).map(s=>({value:s.id,label:s.name||("Store "+s.id),sub:"#"+s.id+(s.unaudited?" · not audited":"")})).sort((a,b)=>a.label.localeCompare(b.label)),
+  `All pods (${S.length+S_UNAUDITED.length})`,()=>renderAll());
 
 function dateInRange(d){
   if(fFrom.value&&d<fFrom.value)return false;
@@ -340,7 +345,9 @@ function dateInRange(d){
 }
 function filtered(){
   const pods=msPod.selected,podsOn=pods.size>0,cities=msCity.selected,citiesOn=cities.size>0;
-  return S.filter(s=>{
+  // "Not audited" pulls from the unaudited pool; other options from audited pods only
+  const pool=fAud.value==="0"?S_UNAUDITED:S;
+  return pool.filter(s=>{
     if(podsOn&&!pods.has(s.id))return false;
     if(citiesOn&&!cities.has(s.city2))return false;
     if(fTier.value&&s.tier!==fTier.value)return false;
@@ -380,23 +387,39 @@ function applyKpiScope(arr){
 }
 function renderKpis(){
   const st=applyKpiScope(filtered()), au=fAudits();
+  const unauditedMode=fAud.value==="0";
   const ids=new Set(st.map(s=>s.id));
   const au2=au.filter(a=>a.no===1);
   const scores2=au.filter(a=>a.no===2).map(a=>a.score);
   const s1avg=au2.length?au2.reduce((x,a)=>x+a.score,0)/au2.length:null;
   const s2avg=scores2.length?scores2.reduce((x,y)=>x+y,0)/scores2.length:null;
   const d=(s2avg!=null&&s1avg!=null)?s2avg-s1avg:null;
-  const paired=fStoresPaired();
-  const preAvg=paired.length?paired.reduce((x,a)=>x+a.pre,0)/paired.length:null;
-  const postAvg=paired.length?paired.reduce((x,a)=>x+a.post,0)/paired.length:null;
+  let paired,preAvg,postAvg;
+  if(unauditedMode){
+    // unaudited pods: pre/post windows around the pseudo audit date (a1pre/a1post)
+    paired=st.filter(s=>s.a1pre!=null&&s.a1post!=null);
+    preAvg=paired.length?paired.reduce((x,a)=>x+a.a1pre,0)/paired.length:null;
+    postAvg=paired.length?paired.reduce((x,a)=>x+a.a1post,0)/paired.length:null;
+  }else{
+    paired=fStoresPaired();
+    preAvg=paired.length?paired.reduce((x,a)=>x+a.pre,0)/paired.length:null;
+    postAvg=paired.length?paired.reduce((x,a)=>x+a.post,0)/paired.length:null;
+  }
   const pd=(postAvg!=null&&preAvg!=null)?(postAvg-preAvg)/preAvg*100:null;
   const audStores=st.length, two=st.filter(s=>s.n>=2).length;
+  const firstKpi=unauditedMode
+    ?kpiHTML("Stores not audited",audStores.toLocaleString(),null,`${paired.length} with IGCC data · control group`)+
+     kpiHTML("Total audits","0",null,"never audited")+
+     kpiHTML("Avg score — 1st audit","—",null,"no audits")
+    :kpiHTML("Stores audited",audStores.toLocaleString(),null,`${two} audited 2+ times`)+
+     kpiHTML("Total audits",au.length.toLocaleString(),null,`${au2.length} first audits`)+
+     kpiHTML("Avg score — 1st audit",s1avg==null?"—":s1avg.toFixed(1)+"%",null,"overall audit score","first");
   document.getElementById("kpis").innerHTML=
-    kpiHTML("Stores audited",audStores.toLocaleString(),null,`${two} audited 2+ times`)+
-    kpiHTML("Total audits",au.length.toLocaleString(),null,`${au2.length} first audits`)+
-    kpiHTML("Avg score — 1st audit",s1avg==null?"—":s1avg.toFixed(1)+"%",null,"overall audit score","first")+
-    kpiHTML("Avg score — 2nd audit",s2avg==null?"—":s2avg.toFixed(1)+"%",d==null?"flat":(d>=0?"up":"down"),d==null?"no 2nd audits in filter":"click: 2nd-audit pods","second")+
-    kpiHTML("IGCC before audit",fmtPct(preAvg),"flat","audit-gap avg QNP","pre")+
+    firstKpi+
+    (unauditedMode
+      ?""
+      :kpiHTML("Avg score — 2nd audit",s2avg==null?"—":s2avg.toFixed(1)+"%",d==null?"flat":(d>=0?"up":"down"),d==null?"no 2nd audits in filter":"click: 2nd-audit pods","second"))+
+    kpiHTML("IGCC before audit",fmtPct(preAvg),"flat",unauditedMode?"14-day avg QNP (pseudo date)":"audit-gap avg QNP","pre")+
     kpiHTML("IGCC after audit",fmtPct(postAvg),pd==null?"flat":(pd<=0?"up":"down"),pd==null?"—":`${pd>=0?"+":""}${pd.toFixed(1)}% change`,"post");
   document.querySelectorAll("#kpis .kpi[data-scope]").forEach(el=>{
     el.onclick=()=>{
@@ -404,7 +427,7 @@ function renderKpis(){
       kpiScope=(kpiScope===sc)?null:sc;
       renderAll();
     };
-  });  document.getElementById("db-meta").textContent=`${au.length} audits · ${audStores} stores`;
+  });  document.getElementById("db-meta").textContent=unauditedMode?`${audStores} unaudited stores`:`${au.length} audits · ${audStores} stores`;
 }
 
 // ---------- 1st vs 2nd audit comparison table ----------
