@@ -146,7 +146,7 @@ tr:hover td{background:#F7F9F8}
     </div>
     <div class="f-group">
       <label class="f-label">Audits per pod</label>
-      <select id="f-audits"><option value="">Any</option><option value="2">2+ audits</option><option value="1">1 audit only</option></select>
+      <select id="f-audits"><option value="">Any</option><option value="2">2+ audits</option><option value="1">1 audit only</option><option value="0">Not audited</option></select>
     </div>
     <div class="f-group f-actions">
       <button class="btn-clear" id="btn-clear">✕ Clear all filters</button>
@@ -161,6 +161,7 @@ tr:hover td{background:#F7F9F8}
   <button type="button" class="tab active" data-tab="sec-compare">📊 Audit Score — Pod Comparison</button>
   <button type="button" class="tab" data-tab="sec-detail">📋 Audited Pods — Score &amp; IGCC Detail</button>
   <button type="button" class="tab" data-tab="sec-param">🔬 Parameter-wise Analysis</button>
+  <button type="button" class="tab" data-tab="sec-groups">⚖️ Audited vs Not Audited</button>
 </div>
 
 <section class="row" id="sec-compare">
@@ -221,10 +222,24 @@ tr:hover td{background:#F7F9F8}
   </div>
 </section>
 
+<section class="row" id="sec-groups" hidden>
+  <div class="card">
+    <div class="card-head"><div><h2>IGCC Change — Audited vs Not Audited</h2><div class="note">Pre vs post IGCC (QNP %) for three groups: pods never audited (control — pseudo audit date drawn from the audit period, 14-day windows), pods audited once, and pods audited 2+ times. Audited pods use the audit-gap windows around their 1st / last audit.</div></div></div>
+    <div class="grid kpis" id="g-kpis"></div>
+    <div class="tbl-scroll" style="max-height:420px;margin-top:8px"><table id="tbl-groups"><thead></thead><tbody></tbody></table></div>
+    <div class="card" style="box-shadow:none;margin-top:14px">
+      <div class="card-head"><div><h3 style="margin:0 0 6px;font-size:14px">Pod-level detail</h3><div class="note">Every pod with its group, pre/post IGCC and change. Click headers to sort.</div></div>
+        <div class="controls"><button class="pill" id="btn-csv-groups" style="cursor:pointer">↓ Export CSV</button></div></div>
+      <div class="tbl-scroll" style="max-height:460px"><table id="tbl-gpods"><thead></thead><tbody></tbody></table></div>
+    </div>
+  </div>
+</section>
+
 <div class="footer-note">Windows: pre = the audit gap before the audit, post = the audit gap after (capped at the next audit date; 14 days for pods with a single audit). QNP = IGCC orders ÷ total FnV orders. Score % = overall pod audit score. FNV% = FnV-section compliance.</div>
 
 <script src="dashboard_data.js"></script>
 <script src="param_data.js"></script>
+<script src="unaudited_data.js"></script>
 <script>
 // STORES: [id, name, city, city2, tier, n, a1d, a1s, a1f, a2s, a2f, a1pre, a1post, a2pre, a2post]
 // AUDITS: [id, no, date, city, auditor, score, fnv, pre, post, preOrd, postOrd]
@@ -329,7 +344,9 @@ function filtered(){
     if(podsOn&&!pods.has(s.id))return false;
     if(citiesOn&&!cities.has(s.city2))return false;
     if(fTier.value&&s.tier!==fTier.value)return false;
-    if(fAud.value&&s.n<+fAud.value)return false;
+    if(fAud.value==="1"){if(s.n!==1)return false;}
+    else if(fAud.value==="2"){if(s.n<2)return false;}
+    else if(fAud.value&&s.n<+fAud.value)return false;
     if(!dateInRange(s.a1d))return false;
     return true;
   });
@@ -429,6 +446,7 @@ document.querySelectorAll("#section-tabs .tab").forEach(btn=>{
     document.getElementById("sec-compare").hidden=btn.dataset.tab!=="sec-compare";
     document.getElementById("sec-detail").hidden=btn.dataset.tab!=="sec-detail";
     document.getElementById("sec-param").hidden=btn.dataset.tab!=="sec-param";
+    document.getElementById("sec-groups").hidden=btn.dataset.tab!=="sec-groups";
     if(btn.dataset.tab==="sec-param")renderParam();
   });
 });
@@ -595,6 +613,54 @@ function renderParam(){
       :`${name} — ${n} scored audit${n===1?"":"s"} in view. Score = mean of selected parameters' scores, scaled to audit score % .`;
 }
 initParamUI();
+
+// ---------- audited vs not-audited group comparison ----------
+const GROUP_LBL={0:"Not audited",1:"1 audit",2:"2+ audits"};
+function grpOf(n){return n===0?0:(n===1?1:2)}
+let gSortKey="id",gSortDir=1;
+const GP=AUDIT_GROUPS.map(r=>({id:r.id,name:r.name,n:r.n,date:r.date,pre:r.pre,post:r.post,
+  city2:r.city2,tier:r.tier,pseudo:r.pseudo,grp:grpOf(r.n),
+  d:(r.pre!=null&&r.post!=null)?(r.post-r.pre)*100:null}));
+function renderGroups(){
+  const gk=[0,1,2].map(g=>{
+    const arr=GP.filter(p=>p.grp===g);
+    const pd_=arr.filter(p=>p.pre!=null&&p.post!=null);
+    const pre=pd_.length?pd_.reduce((x,p)=>x+p.pre,0)/pd_.length:null;
+    const post=pd_.length?pd_.reduce((x,p)=>x+p.post,0)/pd_.length:null;
+    const d=(pre!=null&&post!=null)?(post-pre)*100:null;
+    return {g,pods:arr.length,measured:pd_.length,pre,post,d,
+      up:pd_.filter(p=>p.d>0).length,down:pd_.filter(p=>p.d<0).length};
+  });
+  const kpi=(l,v,d)=>`<div class="kpi"><div class="label">${l}</div><div class="val">${v}</div><div class="delta">${d||""}</div></div>`;
+  document.getElementById("g-kpis").innerHTML=gk.map(r=>
+    kpi(GROUP_LBL[r.g],r.d==null?"—":(r.d>=0?"+":"")+r.d.toFixed(2)+" pp",
+      `${r.measured}/${r.pods} pods with data · IGCC ${r.post==null?"—":fmtPct(r.post)} after vs ${r.pre==null?"—":fmtPct(r.pre)} before`)).join("");
+  document.querySelector("#tbl-groups thead").innerHTML="<tr><th>Group</th><th class='num'>Pods</th><th class='num'>With IGCC data</th><th class='num'>IGCC pre %</th><th class='num'>IGCC post %</th><th class='num'>Δ (pp)</th><th class='num'>Improved / Declined</th></tr>";
+  document.querySelector("#tbl-groups tbody").innerHTML=gk.map(r=>
+    `<tr><td><strong>${GROUP_LBL[r.g]}</strong></td><td class="num">${r.pods}</td><td class="num">${r.measured}</td><td class="num">${fmtPct(r.pre)}</td><td class="num">${fmtPct(r.post)}</td><td class="num">${r.d==null?"—":`<span class="badge ${r.d<=0?"b-good":"b-bad"}">${r.d>=0?"+":""}${r.d.toFixed(2)}</span>`}</td><td class="num">${r.up} / ${r.down}</td></tr>`).join("");
+  const COLS_G=[
+    {k:"id",t:"Pod ID",fmt:v=>"#"+v},
+    {k:"name",t:"Pod Name",fmt:v=>v||"—"},
+    {k:"grp",t:"Group",fmt:v=>GROUP_LBL[v]},
+    {k:"city2",t:"Region",fmt:v=>v||"—"},
+    {k:"tier",t:"Tier",fmt:v=>v||"—"},
+    {k:"date",t:v=>v,fmt:v=>v||"—"},
+    {k:"pre",t:"IGCC pre %",num:1,fmt:v=>fmtPct(v)},
+    {k:"post",t:"IGCC post %",num:1,fmt:v=>fmtPct(v)},
+    {k:"d",t:"Δ IGCC (pp)",num:1,fmt:v=>v==null?"—":`<span class="badge ${v<=0?"b-good":"b-bad"}">${v>=0?"+":""}${v.toFixed(2)}</span>`},
+  ];
+  COLS_G[5].t=GP.some(p=>p.pseudo)?"Audit / pseudo date":"Audit date";
+  GP.sort((a,b)=>{const av=a[gSortKey],bv=b[gSortKey];if(av==null)return 1;if(bv==null)return -1;if(typeof av==="string")return gSortDir*String(av).localeCompare(String(bv));return gSortDir*(av-bv)});
+  document.querySelector("#tbl-gpods thead").innerHTML="<tr>"+COLS_G.map(c=>`<th data-k="${c.k}" class="${c.num?"num":""}">${c.t}</th>`).join("")+"</tr>";
+  document.querySelector("#tbl-gpods tbody").innerHTML=GP.map(s=>"<tr>"+COLS_G.map(c=>`<td class="${c.num?"num":""}">${c.fmt(s[c.k],s)}</td>`).join("")+"</tr>").join("");
+  document.querySelectorAll("#tbl-gpods th").forEach(th=>th.onclick=()=>{const k=th.dataset.k;if(gSortKey===k)gSortDir*=-1;else{gSortKey=k;gSortDir=-1}renderGroups()});
+  document.getElementById("btn-csv-groups").onclick=()=>{
+    const rows=[COLS_G.map(c=>c.t)].concat(GP.map(s=>COLS_G.map(c=>s[c.k]==null?"":(typeof s[c.k]==="number"?s[c.k].toFixed(5):s[c.k]))));
+    const blob=new Blob([rows.map(r=>r.join(",")).join("\n")],{type:"text/csv"});
+    const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="audited_vs_not_audited.csv";a.click();
+  };
+}
+renderGroups();
 
 // ---------- detail table ----------
 let sortKey="a1s",sortDir=-1;
