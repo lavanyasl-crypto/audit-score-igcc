@@ -184,14 +184,22 @@ tr:hover td{background:#F7F9F8}
   <div class="card">
     <div class="card-head"><div><h2>Parameter-wise Score × IGCC</h2><div class="note">Each audit parameter is scored 2 (Compliance), 1 (Partially), 0 (Non-Compliance). Pick a parameter — or "All parameters" for the aggregate — to see its score distribution and how IGCC behaves for each score level — overall, city-wise and pod-wise.</div></div></div>
     <div class="param-picker">
-      <label class="f-label">Parameter</label>
-      <select id="p-param" class="p-select"></select>
-      <label class="f-label" style="margin-left:16px">Zone</label>
-      <select id="p-zone" class="p-select"></select>
-      <label class="f-label" style="margin-left:16px">City</label>
-      <select id="p-city" class="p-select"></select>
-      <label class="f-label" style="margin-left:16px">Pod</label>
-      <select id="p-pod" class="p-select"></select>
+      <div class="f-group" style="min-width:280px">
+        <label class="f-label">🔬 Parameter <span class="f-hint">(searchable, multi-select)</span></label>
+        <div class="ms" id="p-ms-param"></div>
+      </div>
+      <div class="f-group" style="min-width:210px">
+        <label class="f-label">🗺️ Zone <span class="f-hint">(multi-select)</span></label>
+        <div class="ms" id="p-ms-zone"></div>
+      </div>
+      <div class="f-group" style="min-width:210px">
+        <label class="f-label">🏙️ City <span class="f-hint">(multi-select)</span></label>
+        <div class="ms" id="p-ms-city"></div>
+      </div>
+      <div class="f-group" style="min-width:260px">
+        <label class="f-label">🏬 Pod <span class="f-hint">(search by name or ID)</span></label>
+        <div class="ms" id="p-ms-pod"></div>
+      </div>
     </div>
     <div class="grid kpis" id="p-kpis"></div>
     <div class="p-note" id="p-def"></div>
@@ -427,7 +435,7 @@ document.querySelectorAll("#section-tabs .tab").forEach(btn=>{
 
 // ---------- parameter-wise analysis ----------
 const SCORE_LBL={0:"Non-Compliance",1:"Partially Complied",2:"Compliance"};
-let pIdx=0,pZone="",pCity="",pPod="",pSortKey="pod",pSortDir=1;
+let pIdxs=new Set([-1]),pZones=new Set(),pCities=new Set(),pPods=new Set(),pSortKey="pod",pSortDir=1;
 const ZONES=[...new Set(PARAM_NAMES.map(n=>n.split(" - ")[0]))];
 function zoneOf(name){return name.split(" - ")[0]}
 function scoreBadge(v){return v==null?"—":`<span class="p-score-${v}">${v}</span>`}
@@ -437,52 +445,52 @@ function avgParamScore(a){
   return s.length?(s.reduce((x,y)=>x+y,0)/s.length)*50:null; // mean param score (0-2) → audit score % (0-100)
 }
 function initParamUI(){
-  const zoneSel=document.getElementById("p-zone");
-  zoneSel.innerHTML=`<option value="">All zones</option>`+ZONES.map(z=>`<option value="${z}">${z}</option>`).join("");
-  zoneSel.onchange=()=>{pZone=zoneSel.value;fillParamSelect();renderParam()};
-  const citySel=document.getElementById("p-city");
+  createMultiSelect("p-ms-param",
+    PARAM_NAMES.map((n,i)=>({value:i,label:n,sub:zoneOf(n)})).sort((a,b)=>a.label.localeCompare(b.label)),
+    "★ All parameters (aggregate)",sel=>{
+      if(sel.size)pIdxs=new Set(sel);else pIdxs=new Set([-1]);
+      renderParam();});
+  createMultiSelect("p-ms-zone",ZONES.map(z=>({value:z,label:z})),"All zones",sel=>{
+    pZones=new Set(sel);renderParam();});
   const cities=[...new Set(PARAM_AUDITS.map(a=>a.city2).filter(c=>c&&c!=="NaN"))].sort();
-  citySel.innerHTML=`<option value="">All cities</option>`+cities.map(c=>`<option value="${c}">${c}</option>`).join("");
-  citySel.onchange=()=>{pCity=citySel.value;fillPodFilter();renderParam()};
+  createMultiSelect("p-ms-city",cities.map(c=>({value:c,label:c})),"All cities",sel=>{
+    pCities=new Set(sel);renderParam();});
   fillPodFilter();
-  fillParamSelect();
 }
 function fillPodFilter(){
-  const podSel=document.getElementById("p-pod");
-  const pods=[...new Map(PARAM_AUDITS.filter(a=>!pCity||a.city2===pCity)
+  const pods=[...new Map(PARAM_AUDITS.filter(a=>!pCities.size||pCities.has(a.city2))
     .map(a=>[a.store_id,a.city2])).entries()]
-    .map(([id,city2])=>{const st=S.find(s=>s.id===id);return{id,label:(st&&st.name)||("Store "+id)};})
+    .map(([id,city2])=>{const st=S.find(s=>s.id===id);return{id:String(id),label:(st&&st.name)||("Store "+id),sub:"#"+id};})
     .sort((a,b)=>a.label.localeCompare(b.label));
-  podSel.innerHTML=`<option value="">All pods</option>`+pods.map(p=>`<option value="${p.id}">${p.label}</option>`).join("");
-  if(pPod&&!pods.some(p=>String(p.id)===pPod))pPod="";
-  podSel.value=pPod;
-  podSel.onchange=()=>{pPod=podSel.value;renderParam()};
-}
-function fillParamSelect(){
-  const sel=document.getElementById("p-param");
-  const names=PARAM_NAMES.map((n,i)=>({n,i})).filter(o=>!pZone||zoneOf(o.n)===pZone);
-  sel.innerHTML=`<option value="-1">★ All parameters (aggregate)</option>`+names.map(o=>`<option value="${o.i}">${o.n}</option>`).join("");
-  if(pIdx!==-1&&!names.some(o=>o.i===pIdx))pIdx=names.length?names[0].i:0;
-  sel.value=pIdx;
-  sel.onchange=()=>{pIdx=+sel.value;renderParam()};
+  createMultiSelect("p-ms-pod",pods,`All pods (${pods.length})`,sel=>{
+    pPods=new Set(sel);renderParam();});
+  if(pPods.size)[...pPods].forEach(v=>{if(!pods.some(p=>p.id===v))pPods.delete(v)});
 }
 function paramAudits(){
   const ids=fIds();
   return PARAM_AUDITS.filter(a=>ids.has(a.store_id)&&dateInRange(a.audit_date)
-    &&(!pCity||a.city2===pCity)&&(!pPod||String(a.store_id)===pPod)
-    &&(!fTier.value||a.tier===fTier.value)&&(!fAud.value||1)&&true);
+    &&(!pCities.size||pCities.has(a.city2))&&(!pPods.size||pPods.has(String(a.store_id)))
+    &&(!fTier.value||a.tier===fTier.value));
 }
 function renderParam(){
-  const allMode=pIdx===-1;
-  const name=allMode?"All parameters (aggregate)":PARAM_NAMES[pIdx];
-  const col=pIdx;
-  const pa=paramAudits().map(a=>({...a,s:allMode?avgParamScore(a):a.scores[col]})).filter(a=>a.s!=null);
+  const allMode=pIdxs.has(-1)||!pIdxs.size;
+  const cols=[...pIdxs].filter(i=>i!==-1);
+  const name=allMode?"All parameters (aggregate)":
+    (cols.length===1?PARAM_NAMES[cols[0]]:`${cols.length} selected parameters (aggregate)`);
+  const pa=paramAudits().map(a=>{
+    let s;
+    if(allMode)s=avgParamScore(a);
+    else if(cols.length===1)s=a.scores[cols[0]];
+    else{const vs=cols.map(c=>a.scores[c]).filter(v=>v!=null);s=vs.length?(vs.reduce((x,y)=>x+y,0)/vs.length)*50:null;}
+    return {...a,s};
+  }).filter(a=>a.s!=null);
   const withS=pa;
+  const meanMode=allMode||cols.length>1;
   const n2=withS.filter(a=>a.s===2).length,n1=withS.filter(a=>a.s===1).length,n0=withS.filter(a=>a.s===0).length;
   const n=withS.length;
   // avg pre/post igcc per score level
   let byScore;
-  if(allMode){
+  if(allMode||cols.length>1){
     byScore=[[0,70,"<70"],[70,85,"70–85"],[85,101,"≥85"]].map(([lo,hi2,lbl])=>{
       const arr=withS.filter(a=>a.s>=lo&&a.s<hi2);
       const pre=arr.filter(a=>a.pre_qnp!=null),post=arr.filter(a=>a.post_qnp!=null);
@@ -502,20 +510,20 @@ function renderParam(){
   // KPI cards
   const kpi=(l,v,d)=>`<div class="kpi"><div class="label">${l}</div><div class="val">${v}</div><div class="delta">${d||""}</div></div>`;
   const totalScorePct=n?(100*withS.reduce((x,a)=>x+a.s,0)/(n*(allMode?2:1)*(allMode?1:2))):(null);
-  const tsp=n?(allMode
+  const tsp=n?(allMode||cols.length>1
     ?(withS.reduce((x,a)=>x+a.s,0)/n).toFixed(1)+"%"
     :(100*withS.reduce((x,a)=>x+a.s,0)/(n*2)).toFixed(1)+"%"):"—";
   document.getElementById("p-kpis").innerHTML=
     kpi("Audits scored",n,`${PARAM_AUDITS.length} total audits`)+
-    kpi("Total Score %",tsp,allMode?"mean audit score %":`param score sum ÷ (2 × ${n})`)+
-    (allMode
+    kpi("Total Score %",tsp,(allMode||cols.length>1)?"mean audit score %":`param score sum ÷ (2 × ${n})`)+
+    (allMode||cols.length>1
       ?kpi("Audits ≥85",n?Math.round(100*withS.filter(a=>a.s>=85).length/n)+"%":"—",`${withS.filter(a=>a.s>=85).length} audits`)+
        kpi("Audits <70",n?Math.round(100*withS.filter(a=>a.s<70).length/n)+"%":"—",`${withS.filter(a=>a.s<70).length} audits`)
       :kpi("Partially (score 1)",n?Math.round(100*n1/n)+"%":"—",`${n1} audits`)+
        kpi("Non-compliance (score 0)",n?Math.round(100*n0/n)+"%":"—",`${n0} audits`));
   // score-level IGCC table
   const rows=byScore.filter(b=>b.count>0);
-  if(allMode){
+  if(allMode||cols.length>1){
     document.querySelector("#tbl-pigcc thead").innerHTML="<tr><th>Score bucket</th><th>Mean score %</th><th class='num'>Audits</th><th class='num'>IGCC pre %</th><th class='num'>IGCC post %</th><th class='num'>Δ (pp)</th></tr>";
     document.querySelector("#tbl-pigcc tbody").innerHTML=rows.map(b=>{
       const d=(b.post!=null&&b.pre!=null)?(100*(b.post-b.pre)):null;
@@ -533,9 +541,9 @@ function renderParam(){
   const cRows=cities.map(c=>{
     const arr=withS.filter(a=>a.city2===c);
     const pre=arr.filter(a=>a.pre_qnp!=null),post=arr.filter(a=>a.post_qnp!=null);
-    const total=arr.reduce((x,a)=>x+a.s,0), maxTotal=arr.length*2;
+    const total=arr.reduce((x,a)=>x+a.s,0), maxTotal=arr.length*(meanMode?1:2);
     return {c,n:arr.length,
-      totalPct:maxTotal?100*total/maxTotal:null,
+      totalPct:maxTotal?total/maxTotal:null,
       pre:pre.length?pre.reduce((x,a)=>x+a.pre_qnp,0)/pre.length:null,
       post:post.length?post.reduce((x,a)=>x+a.post_qnp,0)/post.length:null};
   }).sort((a,b)=>(b.totalPct||0)-(a.totalPct||0));
@@ -566,8 +574,8 @@ function renderParam(){
     {k:"name",t:"Pod Name",fmt:v=>v||"—"},
     {k:"city2",t:"Region",fmt:v=>v||"—"},
     {k:"tier",t:"Tier",fmt:v=>v||"—"},
-    {k:"s1",t:allMode?"Score 1 (%)":"Score 1st",num:1,fmt:allMode?colorScore:scoreBadge},
-    {k:"s2",t:allMode?"Score 2 (%)":"Score 2nd",num:1,fmt:allMode?colorScore:scoreBadge},
+    {k:"s1",t:meanMode?"Score 1 (%)":"Score 1st",num:1,fmt:meanMode?colorScore:scoreBadge},
+    {k:"s2",t:meanMode?"Score 2 (%)":"Score 2nd",num:1,fmt:meanMode?colorScore:scoreBadge},
     {k:"pre",t:"IGCC pre %",num:1,fmt:v=>fmtPct(v)},
     {k:"post",t:"IGCC post %",num:1,fmt:v=>fmtPct(v)},
   ];
@@ -582,7 +590,9 @@ function renderParam(){
   };
   document.getElementById("p-def").textContent=allMode
     ?`All parameters (aggregate) — ${n} audit${n===1?"":"s"} in view. Score = mean of all parameter scores, scaled to audit score % .`
-    :`${name} — ${n} scored audit${n===1?"":"s"} in view (score 2 = Compliance, 1 = Partially, 0 = Non-Compliance).`;
+    :cols.length===1
+      ?`${name} — ${n} scored audit${n===1?"":"s"} in view (score 2 = Compliance, 1 = Partially, 0 = Non-Compliance).`
+      :`${name} — ${n} scored audit${n===1?"":"s"} in view. Score = mean of selected parameters' scores, scaled to audit score % .`;
 }
 initParamUI();
 
