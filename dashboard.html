@@ -166,8 +166,10 @@ tr:hover td{background:#F7F9F8}
 <div class="tabs" id="section-tabs">
   <button type="button" class="tab active" data-tab="sec-detail">📋 Audited Pods — Score &amp; IGCC Detail</button>
   <button type="button" class="tab" data-tab="sec-param">🔬 Parameter-wise Analysis</button>
-  <button type="button" class="tab" data-tab="sec-groups">⚖️ Audited vs Not Audited</button>
   <button type="button" class="tab" data-tab="sec-noaudit">🚫 Not Audited Pods — Daily IGCC</button>
+  <button type="button" class="tab" data-tab="sec-orders">📦 Total Orders vs Audits</button>
+  <button type="button" class="tab" data-tab="sec-trends">📈 IGCC Trends</button>
+  <button type="button" class="tab" data-tab="sec-rca">🧺 IGCC Reason Bucketing (RCA)</button>
 </div>
 
 <section class="row" id="sec-detail">
@@ -176,6 +178,11 @@ tr:hover td{background:#F7F9F8}
       <div class="controls"><button class="pill" id="btn-csv" style="cursor:pointer">↓ Export CSV</button></div>
     </div>
     <div class="tbl-scroll"><table id="tbl"><thead></thead><tbody></tbody></table></div>
+    <div class="card" style="box-shadow:none;margin-top:14px">
+      <div class="card-head"><div><h3 style="margin:0 0 6px;font-size:14px">IGCC by reason bucket — pre vs post audit</h3><div class="note">Claims per root-cause bucket inside the same pre/post audit-gap windows as the IGCC % above. IGCC % = bucket claims ÷ FnV orders in that window. Pod-caused claims falling after an audit means the audit worked; CX claims should stay flat (audits can't fix false perception).</div></div></div>
+      <div class="grid kpis" id="b-kpis"></div>
+      <div class="tbl-scroll" style="max-height:320px"><table id="tbl-buckets"><thead></thead><tbody></tbody></table></div>
+    </div>
   </div>
 </section>
 
@@ -212,19 +219,6 @@ tr:hover td{background:#F7F9F8}
   </div>
 </section>
 
-<section class="row" id="sec-groups" hidden>
-  <div class="card">
-    <div class="card-head"><div><h2>IGCC Change — Audited vs Not Audited</h2><div class="note">Pre vs post IGCC (QNP %) for audited groups: pods audited once and pods audited 2+ times (audit-gap windows around the 1st / last audit; 7-day windows for single audits). Pods never audited show their latest 7-day average IGCC instead of pre/post — no audit has occurred for them.</div></div></div>
-    <div class="grid kpis" id="g-kpis"></div>
-    <div class="tbl-scroll" style="max-height:420px;margin-top:8px"><table id="tbl-groups"><thead></thead><tbody></tbody></table></div>
-    <div class="card" style="box-shadow:none;margin-top:14px">
-      <div class="card-head"><div><h3 style="margin:0 0 6px;font-size:14px">Pod-level detail</h3><div class="note">Every pod with its group, pre/post IGCC and change. Click headers to sort.</div></div>
-        <div class="controls"><button class="pill" id="btn-csv-groups" style="cursor:pointer">↓ Export CSV</button></div></div>
-      <div class="tbl-scroll" style="max-height:460px"><table id="tbl-gpods"><thead></thead><tbody></tbody></table></div>
-    </div>
-  </div>
-</section>
-
 <section class="row" id="sec-noaudit" hidden>
   <div class="card">
     <div class="card-head"><div><h2>Not Audited Pods — Daily IGCC</h2><div class="note">Daily IGCC (QNP %) for pods never audited — control group. Defaults to the last 15 days of IGCC data; change the date range below. Global city/tier filters apply.</div></div>
@@ -249,17 +243,114 @@ tr:hover td{background:#F7F9F8}
   </div>
 </section>
 
-<div class="footer-note">Windows: pre/post window length = the gap in days between a pod's 1st and 2nd audit (e.g. audits on Sep 1 and Sep 13 → 12-day pre window before the 1st audit and 12-day post window after the 2nd audit). 7 days for pods with a single audit or no audit. QNP = IGCC orders ÷ total FnV orders. Score % = overall pod audit score. FNV% = FnV-section compliance.</div>
+<section class="row" id="sec-orders" hidden>
+  <div class="card">
+    <div class="card-head"><div><h2>Total Orders vs Audits — Pod View</h2><div class="note">Per pod: FnV orders and FnV IGCC orders summed over the <b>same pre/post audit windows as the IGCC %</b> — pre = days before the 1st audit, post = days after; window length = gap between the pod's audits (7 days for single-audit pods). IGCC % = IGCC orders ÷ FnV orders in that window. The "Window days" column shows the days used for each pod. Filtered by the global filters above.</div></div>
+      <div class="controls"><button class="pill" id="btn-csv-orders" style="cursor:pointer">↓ Export CSV</button></div></div>
+    <div class="grid kpis" id="ord-kpis"></div>
+    <div class="card" style="box-shadow:none;margin-bottom:14px">
+      <div class="card-head"><div><h3 style="margin:0 0 6px;font-size:14px">City summary</h3><div class="note">FnV orders, IGCC orders, audits and IGCC rolled up by city cluster.</div></div></div>
+      <div class="tbl-scroll" style="max-height:300px"><table id="tbl-ord-city"><thead></thead><tbody></tbody></table></div>
+    </div>
+    <div class="card" style="box-shadow:none">
+      <div class="card-head"><div><h3 style="margin:0 0 6px;font-size:14px">Pod-level detail</h3><div class="note">One row per pod — total orders, FnV orders, audits, and IGCC pre/post around the 1st audit with total orders in each window where the 10-day orders file covers it. Click headers to sort.</div></div></div>
+      <div class="tbl-scroll" style="max-height:460px"><table id="tbl-ord-pods"><thead></thead><tbody></tbody></table></div>
+    </div>
+  </div>
+</section>
+
+<section class="row" id="sec-trends" hidden>  <div class="card">
+    <div class="card-head"><div><h2>IGCC Before vs After — Charts</h2><div class="note">Each chart shows daily IGCC % over time for one pod or city. The <b style="color:#dc2626">red dashed line</b> is the audit date: the blue line to the <b>left</b> of it is IGCC <b>before</b> the audit, to the <b>right</b> is <b>after</b>. If the line drops after the red line, IGCC improved. Use the range buttons to zoom the window around the audit date.</div></div></div>
+    <div class="filterbar-grid" style="margin:10px 0 14px">
+      <div class="f-group">
+        <label class="f-label">View</label>
+        <select id="tr-view"><option value="pod">Pod-wise</option><option value="city">City-wise</option></select>
+      </div>
+      <div class="f-group">
+        <label class="f-label">IGCC measure</label>
+        <select id="tr-bucket"><option value="">All claims (total IGCC)</option></select>
+      </div>
+      <div class="f-group">
+        <label class="f-label">Range around audit</label>
+        <div class="tabs" id="tr-range">
+          <button type="button" class="tab" data-r="7">7 days</button>
+          <button type="button" class="tab active" data-r="15">15 days</button>
+          <button type="button" class="tab" data-r="30">1 month</button>
+          <button type="button" class="tab" data-r="0">All data</button>
+        </div>
+      </div>
+      <div class="f-group" style="min-width:260px">
+        <label class="f-label">🏬 Pod <span class="f-hint">(pod view)</span></label>
+        <div class="ms" id="tr-ms-pod"></div>
+      </div>
+      <div class="f-group" style="min-width:200px">
+        <label class="f-label">🏙️ City <span class="f-hint">(both views)</span></label>
+        <div class="ms" id="tr-ms-city"></div>
+      </div>
+    </div>
+    <div class="grid kpis" id="tr-kpis"></div>
+    <div id="tr-charts"></div>
+  </div>
+</section>
+
+<section class="row" id="sec-rca" hidden>
+  <div class="card">
+    <div class="card-head"><div><h2>IGCC Reason Bucketing (RCA)</h2><div class="note">Root-cause buckets — <b style="color:#B0644F">Pod</b> (handling/hygiene at the pod), <b style="color:#7C8798">CX</b> (customer perception / false claim), <b style="color:#D1B477">Sourcing</b> (upstream quality) or <b style="color:#829B8C">WH</b> (warehouse / packing) — measured as IGCC % (bucket claims ÷ FnV orders) <b>before vs after each audit</b>, using the same shared-window rule as the rest of the dashboard. Source: <code>analytics.public.rca_daily_igcc_5</code> joined with the audit and daily IGCC files.</div></div>
+      <div class="controls"><button class="pill" id="btn-csv-rca" style="cursor:pointer">↓ Export CSV</button></div>
+    </div>
+    <div class="filterbar-grid" style="margin:10px 0 14px">
+      <div class="f-group" style="min-width:230px">
+        <label class="f-label">🧺 IGCC measure</label>
+        <select id="rca-bucket" class="f-input">
+          <option value="">All claims (total IGCC)</option>
+        </select>
+      </div>
+      <div class="f-group" style="min-width:190px">
+        <label class="f-label">🧺 Focus bucket <span class="f-hint">(tables)</span></label>
+        <select id="rca-focus" class="f-input">
+          <option value="">All buckets</option>
+        </select>
+      </div>
+      <div class="f-group" style="min-width:230px">
+        <label class="f-label">Direction</label>
+        <select id="rca-dir" class="f-input">
+          <option value="">All windows</option>
+          <option value="down">IGCC fell after audit</option>
+          <option value="up">IGCC rose after audit</option>
+        </select>
+      </div>
+    </div>
+    <div class="grid kpis" id="rca-kpis"></div>
+    <div class="card" style="box-shadow:none;margin-top:14px">
+      <div class="card-head"><div><h3 style="margin:0 0 6px;font-size:14px">Bucket-wise IGCC — before vs after audit</h3><div class="note">Per root-cause bucket: claims and IGCC % (claims ÷ FnV orders) in the pre window vs the post window, aggregated across all audit windows in the current filter. Δ = post − pre in pp; green = IGCC fell. "Windows ↓ / both" counts windows where that bucket's IGCC % dropped.</div></div></div>
+      <div class="tbl-scroll" style="max-height:300px"><table id="tbl-rca-bucket"><thead></thead><tbody></tbody></table></div>
+    </div>
+    <div class="card" style="box-shadow:none;margin-top:14px">
+      <div class="card-head"><div><h3 style="margin:0 0 6px;font-size:14px">City × bucket — before vs after</h3><div class="note">IGCC % before → after for each bucket in each city. Cities sorted by total pre claims.</div></div></div>
+      <div class="tbl-scroll" style="max-height:380px"><table id="tbl-rca-city"><thead></thead><tbody></tbody></table></div>
+    </div>
+    <div class="card" style="box-shadow:none;margin-top:14px">
+      <div class="card-head"><div><h3 style="margin:0 0 6px;font-size:14px">Pod × audit detail</h3><div class="note">One row per audit window: bucket claims and IGCC % before vs after the audit. Click headers to sort.</div></div>
+        <div class="controls"><button class="pill" id="btn-csv-rca-pods" style="cursor:pointer">↓ Export CSV</button></div></div>
+      <div class="tbl-scroll" style="max-height:520px"><table id="tbl-rca-pods"><thead></thead><tbody></tbody></table></div>
+    </div>
+  </div>
+</section>
+
+<div class="footer-note">Windows: the days between two audits form ONE shared window used for both "IGCC post" of the earlier audit and "IGCC pre" of the later audit — so post 1 and pre 2 are always the same % (e.g. audits on Sep 1 and Sep 13 → pre 1 = Aug 20–31, the shared Sep 2–12 window gives post 1 AND pre 2, post 2 = Sep 13 → today). Pre of the 1st audit = same number of days before it as the gap to the next audit. 7 days for pods with a single audit or no audit. The "Win days" / "Window days" columns show the days used. QNP = IGCC orders ÷ total FnV orders. Score % = overall pod audit score. FNV% = FnV-section compliance.</div>
 
 <script src="dashboard_data.js"></script>
 <script src="param_data.js"></script>
 <script src="unaudited_data.js"></script>
+<script src="orders_data.js"></script>
+<script src="rca_data.js"></script>
+<script src="rca_windows_data.js"></script>
 <script>
-// STORES: [id, name, city, city2, tier, n, a1d, a1s, a1f, a2s, a2f, a1pre, a1post, a2pre, a2post]
-// AUDITS: [id, no, date, city, auditor, score, fnv, pre, post, preOrd, postOrd]
+// STORES: [id, name, city, city2, tier, n, a1d, a1s, a1f, a2s, a2f, a1pre, a1post, a2pre, a2post, win1d, win2d]
+// AUDITS: [id, no, date, city, auditor, score, fnv, pre, post, preOrd, postOrd, winDays]
 // DAILY:  [id, date, tot, igcc]
-const S = STORES.map(r=>({id:r[0],name:r[1],city:r[2],city2:r[3],tier:r[4],n:r[5],a1d:r[6],a1s:r[7],a1f:r[8],a2s:r[9],a2f:r[10],a1pre:r[11],a1post:r[12],a2pre:r[13],a2post:r[14]}));
-const A = AUDITS.map(r=>({id:r[0],no:r[1],date:r[2],city:r[3],auditor:r[4],score:r[5],fnv:r[6],pre:r[7],post:r[8],preOrd:r[9],postOrd:r[10]}));
+const S = STORES.map(r=>({id:r[0],name:r[1],city:r[2],city2:r[3],tier:r[4],n:r[5],a1d:r[6],a1s:r[7],a1f:r[8],a2s:r[9],a2f:r[10],a1pre:r[11],a1post:r[12],a2pre:r[13],a2post:r[14],win1d:r[15],win2d:r[16]}));
+const A = AUDITS.map(r=>({id:r[0],no:r[1],date:r[2],city:r[3],auditor:r[4],score:r[5],fnv:r[6],pre:r[7],post:r[8],preOrd:r[9],postOrd:r[10],winDays:r[11]}));
 const idStore = new Map(S.map(s=>[s.id,s]));
 // unaudited pods (from AUDIT_GROUPS, n=0) mapped to the same shape as S entries
 const S_UNAUDITED = AUDIT_GROUPS.filter(r=>r.n===0).map(r=>({
@@ -461,10 +552,12 @@ const COLS=[
   {k:"n",t:"Audits",fmt:v=>v},
   {k:"a1d",t:"1st Audit Date",fmt:v=>v||"—"},
   {k:"a1s",t:"Score 1 (%)",num:1,fmt:v=>v==null?"—":colorScore(v)},
+  {k:"win1d",t:"Win days 1",num:1,fmt:v=>v==null?"—":v+"d"},
   {k:"a1pre",t:"IGCC pre 1",pct:1,fmt:v=>fmtPct(v)},
   {k:"a1post",t:"IGCC post 1",pct:1,fmt:v=>fmtPct(v)},
   {k:"a2d",t:"2nd Audit Date",fmt:v=>v||"—"},
   {k:"a2s",t:"Score 2 (%)",num:1,fmt:v=>v==null?"—":colorScore(v)},
+  {k:"win2d",t:"Win days 2",num:1,fmt:v=>v==null?"—":v+"d"},
   {k:"a2pre",t:"IGCC pre 2",pct:1,fmt:v=>fmtPct(v)},
   {k:"a2post",t:"IGCC post 2",pct:1,fmt:v=>fmtPct(v)},
   {k:"dS",t:"Δ Score",num:1,fmt:v=>v==null?"—":`<span class="badge ${v>=0?"b-good":"b-bad"}">${v>=0?"+":""}${v.toFixed(1)}</span>`},
@@ -486,6 +579,41 @@ function renderTable(){
   };
 }
 
+// ---------- bucket-level pre/post (Audited Pods tab, RCA_WINDOWS) ----------
+// RCA_WINDOWS: [id, auditNo, preByBucket[Pod,CX,Sourcing,WH], postByBucket[same], preFnvOrders, postFnvOrders]
+const RW_BUCKETS=RCA_WINDOW_BUCKETS;
+const RW_COLORS={Pod:"#B0644F",CX:"#7C8798",Sourcing:"#C09A45",WH:"#5F7A6B"};
+function renderBuckets(){
+  const ids=new Set(filtered().map(s=>s.id));
+  const rows=RCA_WINDOWS.filter(r=>ids.has(r[0]));
+  const kpi=(l,v,d)=>`<div class="kpi"><div class="label">${l}</div><div class="val">${v}</div><div class="delta">${d||""}</div></div>`;
+  const agg=RW_BUCKETS.map((b,i)=>{
+    let preC=0,postC=0,preO=0,postO=0,both=0,down=0;
+    rows.forEach(r=>{
+      if(r[2][i])preC+=r[2][i];if(r[3][i])postC+=r[3][i];
+      if(r[4])preO+=r[4];if(r[5])postO+=r[5];
+      const preD=(r[4]>0&&r[2][i]!=null)?r[2][i]/r[4]:null;
+      const postD=(r[5]>0&&r[3][i]!=null)?r[3][i]/r[5]:null;
+      if(preD!=null&&postD!=null){both++;if(postD<preD)down++;}});
+    return {b,preC,postC,preO,postO,both,down,
+      pre:preO?preC/preO:null,post:postO?postC/postO:null};
+  });
+  const overall=agg.reduce((x,a)=>x+(a.post!=null&&a.pre!=null?(a.post-a.pre):0),0);
+  document.getElementById("b-kpis").innerHTML=
+    kpi("Pods in view",rows.length?new Set(rows.map(r=>r[0])).size.toLocaleString():"—",
+      rows.length.toLocaleString()+" audit windows")+
+    kpi("Pod-caused claims",agg[0].preC.toLocaleString()+" → "+agg[0].postC.toLocaleString(),
+      agg[0].pre!=null&&agg[0].post!=null?(100*(agg[0].post-agg[0].pre)).toFixed(2)+" pp per order":"—")+
+    kpi("CX claims",agg[1].preC.toLocaleString()+" → "+agg[1].postC.toLocaleString(),
+      agg[1].pre!=null&&agg[1].post!=null?(100*(agg[1].post-agg[1].pre)).toFixed(2)+" pp per order":"—")+
+    kpi("Windows where Pod IGCC fell",agg[0].both?agg[0].down+" of "+agg[0].both:"—","green = audit helped");
+  document.querySelector("#tbl-buckets thead").innerHTML="<tr><th>Bucket</th><th class='num'>Claims pre</th><th class='num'>Claims post</th><th class='num'>IGCC pre %</th><th class='num'>IGCC post %</th><th class='num'>Δ (pp)</th></tr>";
+  document.querySelector("#tbl-buckets tbody").innerHTML=agg.map(a=>{
+    const d=(a.pre!=null&&a.post!=null)?100*(a.post-a.pre):null;
+    return `<tr><td><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${RW_COLORS[a.b]||"#999"};margin-right:6px"></span><strong>${a.b}</strong></td><td class="num">${a.preC.toLocaleString()}</td><td class="num">${a.postC.toLocaleString()}</td><td class="num">${fmtPct(a.pre)}</td><td class="num">${fmtPct(a.post)}</td><td class="num">${d==null?"—":`<span class="badge ${d<=0?"b-good":"b-bad"}">${(d>=0?"+":"")+d.toFixed(2)}</span>`}</td></tr>`;
+  }).join("")||"<tr><td colspan='6' style='text-align:center;color:var(--ink-3)'>No audited pods in current filter</td></tr>";
+}
+
 // ---------- section tabs ----------
 document.querySelectorAll("#section-tabs .tab").forEach(btn=>{
   btn.addEventListener("click",()=>{
@@ -493,11 +621,15 @@ document.querySelectorAll("#section-tabs .tab").forEach(btn=>{
     btn.classList.add("active");
     document.getElementById("sec-detail").hidden=btn.dataset.tab!=="sec-detail";
     document.getElementById("sec-param").hidden=btn.dataset.tab!=="sec-param";
-    document.getElementById("sec-groups").hidden=btn.dataset.tab!=="sec-groups";
     document.getElementById("sec-noaudit").hidden=btn.dataset.tab!=="sec-noaudit";
+    document.getElementById("sec-orders").hidden=btn.dataset.tab!=="sec-orders";
+    document.getElementById("sec-trends").hidden=btn.dataset.tab!=="sec-trends";
+    document.getElementById("sec-rca").hidden=btn.dataset.tab!=="sec-rca";
     if(btn.dataset.tab==="sec-param")renderParam();
-    if(btn.dataset.tab==="sec-groups")renderGroups();
     if(btn.dataset.tab==="sec-noaudit")renderNoAudit();
+    if(btn.dataset.tab==="sec-orders")renderOrders();
+    if(btn.dataset.tab==="sec-trends")renderTrends();
+    if(btn.dataset.tab==="sec-rca")renderRca();
   });
 });
 
@@ -666,9 +798,6 @@ function renderParam(){
 }
 initParamUI();
 
-// ---------- audited vs not-audited group comparison ----------
-const GROUP_LBL={0:"Not audited",1:"1 audit",2:"2+ audits"};
-function grpOf(n){return n===0?0:(n===1?1:2)}
 // latest 7-day avg QNP per pod from DAILY (used for never-audited pods instead of pseudo pre/post)
 const LATEST7=(()=>{
   const m=new Map();
@@ -681,80 +810,6 @@ const LATEST7=(()=>{
   });
   return out;
 })();
-let gSortKey="id",gSortDir=1;
-const GP=AUDIT_GROUPS.map(r=>{
-  const unaud=r.n===0;
-  const cur=unaud?(LATEST7.get(r.id)??null):null;
-  return {id:r.id,name:r.name,n:r.n,date:r.date,pre:r.pre,post:r.post,
-    city2:r.city2,tier:r.tier,pseudo:r.pseudo,grp:grpOf(r.n),
-    latest7:cur,
-    d:unaud?null:((r.pre!=null&&r.post!=null)?(r.post-r.pre)*100:null)};
-});
-function gFiltered(){
-  const pods=msPod.selected,podsOn=pods.size>0,cities=msCity.selected,citiesOn=cities.size>0;
-  return GP.filter(p=>{
-    if(podsOn&&!pods.has(p.id))return false;
-    if(citiesOn&&!cities.has(p.city2))return false;
-    if(fTier.value&&p.tier!==fTier.value)return false;
-    if(!dateInRange(p.date))return false;
-    if(fAud.value==="0")return p.grp===0;
-    if(fAud.value==="1")return p.grp===1;
-    if(fAud.value==="2")return p.grp===2;
-    return true;
-  });
-}
-function renderGroups(){
-  const pool=gFiltered();
-  const showAll=!fAud.value;
-  const grps=showAll?[0,1,2]:(fAud.value==="0"?[0]:fAud.value==="1"?[1]:[2]);
-  const gk=grps.map(g=>{
-    const arr=pool.filter(p=>p.grp===g);
-    if(g===0){
-      const w=arr.filter(p=>p.latest7!=null);
-      const avg=w.length?w.reduce((x,p)=>x+p.latest7,0)/w.length:null;
-      return {g,pods:arr.length,measured:w.length,pre:null,post:avg,d:null,latest7:avg,
-        up:null,down:null};
-    }
-    const pd_=arr.filter(p=>p.pre!=null&&p.post!=null);
-    const pre=pd_.length?pd_.reduce((x,p)=>x+p.pre,0)/pd_.length:null;
-    const post=pd_.length?pd_.reduce((x,p)=>x+p.post,0)/pd_.length:null;
-    const d=(pre!=null&&post!=null)?(post-pre)*100:null;
-    return {g,pods:arr.length,measured:pd_.length,pre,post,d,
-      up:pd_.filter(p=>p.d>0).length,down:pd_.filter(p=>p.d<0).length};
-  });
-  const kpi=(l,v,d)=>`<div class="kpi"><div class="label">${l}</div><div class="val">${v}</div><div class="delta">${d||""}</div></div>`;
-  document.getElementById("g-kpis").innerHTML=gk.map(r=>
-    r.g===0
-    ?kpi(GROUP_LBL[r.g],fmtPct(r.latest7),`${r.measured}/${r.pods} pods with data · latest 7-day avg IGCC`)
-    :kpi(GROUP_LBL[r.g],r.d==null?"—":(r.d>=0?"+":"")+r.d.toFixed(2)+" pp",
-      `${r.measured}/${r.pods} pods with data · IGCC ${r.post==null?"—":fmtPct(r.post)} after vs ${r.pre==null?"—":fmtPct(r.pre)} before`)).join("");
-  document.querySelector("#tbl-groups thead").innerHTML="<tr><th>Group</th><th class='num'>Pods</th><th class='num'>With IGCC data</th><th class='num'>IGCC pre %</th><th class='num'>IGCC post %</th><th class='num'>Latest 7-day avg %</th><th class='num'>Δ (pp)</th><th class='num'>Improved / Declined</th></tr>";
-  document.querySelector("#tbl-groups tbody").innerHTML=gk.map(r=>
-    `<tr><td><strong>${GROUP_LBL[r.g]}</strong></td><td class="num">${r.pods}</td><td class="num">${r.measured}</td><td class="num">${fmtPct(r.pre)}</td><td class="num">${fmtPct(r.post)}</td><td class="num">${fmtPct(r.latest7)}</td><td class="num">${r.d==null?"—":`<span class="badge ${r.d<=0?"b-good":"b-bad"}">${r.d>=0?"+":""}${r.d.toFixed(2)}</span>`}</td><td class="num">${r.up==null?"—":`${r.up} / ${r.down}`}</td></tr>`).join("");
-  const COLS_G=[
-    {k:"id",t:"Pod ID",fmt:v=>"#"+v},
-    {k:"name",t:"Pod Name",fmt:v=>v||"—"},
-    {k:"grp",t:"Group",fmt:v=>GROUP_LBL[v]},
-    {k:"city2",t:"City",fmt:v=>v||"—"},
-    {k:"tier",t:"Tier",fmt:v=>v||"—"},
-    {k:"date",t:"Audit date",fmt:(v,s)=>s.grp===0?"—":(v||"—")},
-    {k:"pre",t:"IGCC pre %",num:1,fmt:(v,s)=>s.grp===0?"—":fmtPct(v)},
-    {k:"post",t:"IGCC post %",num:1,fmt:(v,s)=>s.grp===0?"—":fmtPct(v)},
-    {k:"latest7",t:"Latest 7-day avg %",num:1,fmt:(v,s)=>s.grp===0?fmtPct(v):"—"},
-    {k:"d",t:"Δ IGCC (pp)",num:1,fmt:(v,s)=>s.grp===0?"—":(v==null?"—":`<span class="badge ${v<=0?"b-good":"b-bad"}">${v>=0?"+":""}${v.toFixed(2)}</span>`)},
-  ];
-  pool.sort((a,b)=>{const av=a[gSortKey],bv=b[gSortKey];if(av==null)return 1;if(bv==null)return -1;if(typeof av==="string")return gSortDir*String(av).localeCompare(String(bv));return gSortDir*(av-bv)});
-  document.querySelector("#tbl-gpods thead").innerHTML="<tr>"+COLS_G.map(c=>`<th data-k="${c.k}" class="${c.num?"num":""}">${c.t}</th>`).join("")+"</tr>";
-  document.querySelector("#tbl-gpods tbody").innerHTML=pool.map(s=>"<tr>"+COLS_G.map(c=>`<td class="${c.num?"num":""}">${c.fmt(s[c.k],s)}</td>`).join("")+"</tr>").join("");
-  document.querySelectorAll("#tbl-gpods th").forEach(th=>th.onclick=()=>{const k=th.dataset.k;if(gSortKey===k)gSortDir*=-1;else{gSortKey=k;gSortDir=-1}renderGroups()});
-  document.getElementById("btn-csv-groups").onclick=()=>{
-    const rows=[COLS_G.map(c=>c.t)].concat(GP.map(s=>COLS_G.map(c=>s[c.k]==null?"":(typeof s[c.k]==="number"?s[c.k].toFixed(5):s[c.k]))));
-    const blob=new Blob([rows.map(r=>r.join(",")).join("\n")],{type:"text/csv"});
-    const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="audited_vs_not_audited.csv";a.click();
-  };
-}
-renderGroups();
-
 // ---------- not-audited pods: daily IGCC ----------
 const DAILY_UNAUDITED=DAILY.map(r=>({id:r[0],date:r[1],tot:r[2],igcc:r[3]}))
   .filter(d=>{const s=S_UNAUDITED.find(s=>s.id===d.id);if(!s)return false;d.city2=s.city2;d.tier=s.tier;d.name=s.name;return true;});
@@ -776,10 +831,12 @@ function igccCell(v){
   return `<td class="num na-cell" style="background:hsl(${hue},70%,88%)"><strong>${(100*v).toFixed(1)}%</strong></td>`;
 }
 function renderNoAudit(){
-  // pod filter options respect global city/tier filters
+  // pod filter options respect global city/tier/pod filters
+  const globalPods=msPod.selected;
   const globalIds=new Set(S_UNAUDITED.filter(s=>{
     if(msCity.selected.size&&!msCity.selected.has(s.city2))return false;
     if(fTier.value&&s.tier!==fTier.value)return false;
+    if(globalPods.size&&!globalPods.has(s.id))return false;
     return true;}).map(s=>s.id));
   const pods=[...new Map(DAILY_UNAUDITED.filter(d=>globalIds.has(d.id))
     .map(d=>[d.id,d])).values()]
@@ -817,13 +874,18 @@ function renderNoAudit(){
   });
   let piv=[...byPod.values()];
   piv.forEach(p=>{p.avg=(p.tot>0)?p.igc/p.tot:null});
+  // sort: named cols (id/name/avg) or any date column (by that day's IGCC %)
+  const dateSortVal=p=>p.cells[naSortKey];
   piv.sort((a,b)=>{
     if(naSortKey==="avg"){const x=a.avg??-1,y=b.avg??-1;return naSortDir*(x-y)}
     if(naSortKey==="id"){return naSortDir*(a.id-b.id)}
-    const x=(a.name||"~Store "+a.id),y=(b.name||"~Store "+b.id);return naSortDir*x.localeCompare(y)});
-  const head=`<tr><th data-k="id" class="num">Pod ID</th><th data-k="name">Pod Name</th><th>City</th>`
-    +days.map(d=>`<th class="num na-dcol">${d.slice(5)}</th>`).join("")
-    +`<th data-k="avg" class="num">Avg %</th></tr>`;
+    if(naSortKey==="name"){const x=(a.name||"~Store "+a.id),y=(b.name||"~Store "+b.id);return naSortDir*x.localeCompare(y)}
+    if(dateSet.has(naSortKey)){const x=dateSortVal(a)??-1,y=dateSortVal(b)??-1;return naSortDir*(x-y)}
+    return 0;});
+  const sortIcon=k=>naSortKey===k?(naSortDir===1?" ▲":" ▼"):"";
+  const head=`<tr><th data-k="id" class="num">Pod ID${sortIcon("id")}</th><th data-k="name">Pod Name${sortIcon("name")}</th><th>City</th>`
+    +days.map(d=>`<th data-k="${d}" class="num na-dcol" title="Sort by IGCC % on ${d}">${d.slice(5)}${sortIcon(d)}</th>`).join("")
+    +`<th data-k="avg" class="num">Avg %${sortIcon("avg")}</th></tr>`;
   document.querySelector("#tbl-noaudit thead").innerHTML=head;
   document.querySelector("#tbl-noaudit tbody").innerHTML=piv.map(p=>"<tr>"
     +`<td class="num">#${p.id}</td>`
@@ -832,7 +894,7 @@ function renderNoAudit(){
     +days.map(d=>igccCell(p.cells[d])).join("")
     +igccCell(p.avg).replace('class="num na-cell"','class="num na-cell na-avg"')
     +"</tr>").join("");
-  document.querySelectorAll("#tbl-noaudit th").forEach(th=>th.onclick=()=>{const k=th.dataset.k;if(!k)return;if(naSortKey===k)naSortDir*=-1;else{naSortKey=k;naSortDir=k==="name"?1:-1}renderNoAudit()});
+  document.querySelectorAll("#tbl-noaudit th").forEach(th=>th.onclick=()=>{const k=th.dataset.k;if(!k)return;if(naSortKey===k)naSortDir*=-1;else{naSortKey=k;naSortDir=(k==="name")?1:-1}renderNoAudit()});
   document.getElementById("btn-csv-noaudit").onclick=()=>{
     const headCsv=["Pod ID","Pod Name","City",...days,"Avg %"];
     const body=piv.map(p=>[p.id,p.name||"",p.city2||"",
@@ -848,8 +910,440 @@ document.getElementById("na-last15").addEventListener("click",()=>{
   naFrom.value=addDays(dailyDates[dailyDates.length-1],-14);naTo.value=dailyDates[dailyDates.length-1];renderNoAudit();});
 [naFrom,naTo].forEach(el=>el.addEventListener("change",renderNoAudit));
 
+// ---------- total orders vs audits tab ----------
+// POD_ORDERS: [id, name, city, city2, tier, n_audits, audit_dates, avg_score,
+//  a1_preF, a1_preIg, a1_preQ, a1_postF, a1_postIg, a1_postQ, a1_winD,
+//  a2_preF, a2_preIg, a2_preQ, a2_postF, a2_postIg, a2_postQ, a2_winD]
+const PO=POD_ORDERS.map(r=>({id:r[0],name:r[1],city:r[2],city2:r[3],tier:r[4],n:r[5],dates:r[6],score:r[7],
+  a1preF:r[8],a1preI:r[9],a1preQ:r[10],a1postF:r[11],a1postI:r[12],a1postQ:r[13],a1winD:r[14],
+  a2preF:r[15],a2preI:r[16],a2preQ:r[17],a2postF:r[18],a2postI:r[19],a2postQ:r[20],a2winD:r[21]}));
+let ordSortKey="a1preQ",ordSortDir=-1;
+function renderOrders(){
+  // global filters: pods, cities, tier, audits-per-pod, date range (via filtered())
+  const st=new Set(filtered().map(s=>s.id));
+  const rows=PO.filter(p=>st.has(p.id));
+  const kpi=(l,v,d)=>`<div class="kpi"><div class="label">${l}</div><div class="val">${v}</div><div class="delta">${d||""}</div></div>`;
+  // audit-1 based KPIs
+  const a1rows=rows.filter(p=>p.a1preQ!=null&&p.a1postQ!=null);
+  const fnvT=rows.reduce((x,p)=>x+(p.a1preF||0)+(p.a1postF||0),0);
+  const igc=rows.reduce((x,p)=>x+(p.a1preI||0)+(p.a1postI||0),0);
+  const aud=rows.reduce((x,p)=>x+p.n,0);
+  const audPods=rows.filter(p=>p.n>0).length;
+  const preAvg=a1rows.length?a1rows.reduce((x,p)=>x+p.a1preQ,0)/a1rows.length:null;
+  const postAvg=a1rows.length?a1rows.reduce((x,p)=>x+p.a1postQ,0)/a1rows.length:null;
+  const pp=(preAvg!=null&&postAvg!=null)?(postAvg-preAvg)*100:null;
+  document.getElementById("ord-kpis").innerHTML=
+    kpi("FnV orders (audit-1 windows)",fmtN(fnvT),"IGCC orders: "+fmtN(igc))+
+    kpi("Total audits",aud.toLocaleString(),audPods+" of "+rows.length+" pods audited")+
+    kpi("IGCC before audit 1",fmtPct(preAvg),a1rows.length+" pods with pre/post")+
+    kpi("IGCC after audit 1",fmtPct(postAvg),pp==null?"—":(pp<=0?"↓ ":"↑ ")+Math.abs(pp).toFixed(2)+" pp change");
+  // city summary — same global filter, aggregated from the filtered pod rows (audit-1 windows)
+  const cityAgg=new Map();
+  rows.forEach(p=>{
+    const c2=p.city2||"others";
+    if(!cityAgg.has(c2))cityAgg.set(c2,{fnv:0,igcc:0,audits:0,pods:0});
+    const o=cityAgg.get(c2);
+    if(p.a1preF)o.fnv+=p.a1preF;
+    if(p.a1postF)o.fnv+=p.a1postF;
+    if(p.a1preI)o.igcc+=p.a1preI;
+    if(p.a1postI)o.igcc+=p.a1postI;
+    o.audits+=p.n; o.pods++;
+  });
+  const coRows=[...cityAgg.entries()].sort((a,b)=>b[1].fnv-a[1].fnv)
+    .map(([c2,o])=>({city2:c2,fnv:o.fnv||null,igcc:o.igcc||null,qnp:o.fnv>0?o.igcc/o.fnv:null,audits:o.audits,pods:o.pods}));
+  document.querySelector("#tbl-ord-city thead").innerHTML="<tr><th>City cluster</th><th class='num'>FnV orders</th><th class='num'>IGCC orders</th><th class='num'>IGCC (QNP %)</th><th class='num'>Audits</th><th class='num'>Pods</th></tr>";
+  document.querySelector("#tbl-ord-city tbody").innerHTML=coRows.map(c=>
+    `<tr><td><strong>${c.city2}</strong></td><td class="num">${fmtN(c.fnv)}</td><td class="num">${fmtN(c.igcc)}</td><td class="num">${fmtPct(c.qnp)}</td><td class="num">${c.audits}</td><td class="num">${c.pods}</td></tr>`).join("");
+  // pod detail — per-audit columns (audit 1 and audit 2 side by side)
+  const COLS_O=[
+    {k:"id",t:"Pod ID",fmt:v=>"#"+v},
+    {k:"name",t:"Pod / Store",fmt:v=>v||"—"},
+    {k:"city",t:"City",fmt:v=>v||"—"},
+    {k:"n",t:"Audits",num:1,fmt:v=>v},
+    {k:"dates",t:"Audit date(s)",fmt:v=>v||"—"},
+    {k:"score",t:"Avg audit score",num:1,fmt:v=>v==null?"—":colorScore(v)},
+    {k:"a1preF",t:"A1 FnV pre",num:1,fmt:v=>v==null?"—":fmtN(v)},
+    {k:"a1preQ",t:"A1 IGCC pre %",num:1,fmt:v=>fmtPct(v)},
+    {k:"a1postF",t:"A1 FnV post",num:1,fmt:(v,p)=>{if(v==null)return "—";if(p.a1preF==null)return fmtN(v);const d=v-p.a1preF;return `<span class="badge ${d>=0?"b-good":"b-bad"}">${fmtN(v)}</span>`}},
+    {k:"a1postQ",t:"A1 IGCC post %",num:1,fmt:(v,p)=>{if(v==null)return "—";if(p.a1preQ==null)return fmtPct(v);const d=(v-p.a1preQ)*100;return `<span class="badge ${d<=0?"b-good":"b-bad"}">${(100*v).toFixed(2)}%</span>`}},
+    {k:"a1winD",t:"A1 win days",num:1,fmt:v=>v==null?"—":v+"d"},
+    {k:"a2preF",t:"A2 FnV pre",num:1,fmt:v=>v==null?"—":fmtN(v)},
+    {k:"a2preQ",t:"A2 IGCC pre %",num:1,fmt:v=>fmtPct(v)},
+    {k:"a2postF",t:"A2 FnV post",num:1,fmt:v=>v==null?"—":fmtN(v)},
+    {k:"a2postQ",t:"A2 IGCC post %",num:1,fmt:(v,p)=>{if(v==null)return "—";if(p.a2preQ==null)return fmtPct(v);const d=(v-p.a2preQ)*100;return `<span class="badge ${d<=0?"b-good":"b-bad"}">${(100*v).toFixed(2)}%</span>`}},
+    {k:"a2winD",t:"A2 win days",num:1,fmt:v=>v==null?"—":v+"d"},
+  ];
+  rows.sort((a,b)=>{const av=a[ordSortKey],bv=b[ordSortKey];if(av==null)return 1;if(bv==null)return -1;if(typeof av==="string")return ordSortDir*String(av).localeCompare(String(bv));return ordSortDir*(av-bv)});
+  document.querySelector("#tbl-ord-pods thead").innerHTML="<tr>"+COLS_O.map(c=>`<th data-k="${c.k}" class="${c.num?"num":""}">${c.t}</th>`).join("")+"</tr>";
+  document.querySelector("#tbl-ord-pods tbody").innerHTML=rows.map(p=>"<tr>"+COLS_O.map(c=>`<td class="${c.num?"num":""}">${c.fmt(p[c.k],p)}</td>`).join("")+"</tr>").join("");
+  document.querySelectorAll("#tbl-ord-pods th").forEach(th=>th.onclick=()=>{const k=th.dataset.k;if(ordSortKey===k)ordSortDir*=-1;else{ordSortKey=k;ordSortDir=-1}renderOrders()});
+  document.getElementById("btn-csv-orders").onclick=()=>{
+    const head=COLS_O.map(c=>c.t);
+    const body=rows.map(p=>COLS_O.map(c=>{
+      const v=p[c.k];
+      if(v==null)return "";
+      if(c.k==="a1preQ"||c.k==="a1postQ"||c.k==="a2preQ"||c.k==="a2postQ")return typeof v==="number"?v.toFixed(5):v;
+      return v;}));
+    const blob=new Blob([[head].concat(body).map(r=>r.join(",")).join("\n")],{type:"text/csv"});
+    const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="total_orders_vs_audits.csv";a.click();
+  };
+}
+renderOrders();
+
+// ---------- IGCC Before vs After tab (charts) ----------
+// AUDITED_DAILY: [id, date, tot, igcc] — daily FnV orders + IGCC orders for audited pods
+const TR_DAILY=AUDITED_DAILY.map(r=>({id:r[0],date:r[1],tot:r[2],igcc:r[3]}));
+let trView="pod",trRange=15,trBucket="";
+// daily claims per bucket per pod — built from RCA_ROWS so the bucket selector can split the lines
+const TR_BUCKET_DAILY=(()=>{
+  const m=new Map(); // id -> Map(date -> {Pod,CX,Sourcing,WH})
+  RCA_ROWS.forEach(r=>{
+    if(!m.has(r[1]))m.set(r[1],new Map());
+    const dm=m.get(r[1]);
+    if(!dm.has(r[0]))dm.set(r[0],{Pod:0,CX:0,Sourcing:0,WH:0});
+    dm.get(r[0])[r[3]]++;
+  });
+  return m;
+})();
+RW_BUCKETS.forEach(b=>document.getElementById("tr-bucket").add(new Option(b,b)));
+document.getElementById("tr-bucket").addEventListener("change",e=>{trBucket=e.target.value;renderTrends()});
+const trPodsSel=new Set(),trCitiesSel=new Set();
+const trMsPod=createMultiSelect("tr-ms-pod",
+  S.map(s=>({value:s.id,label:s.name||("Store "+s.id),sub:"#"+s.id})).sort((a,b)=>a.label.localeCompare(b.label)),
+  `All pods (${S.length})`,sel=>{trPodsSel.clear();sel.forEach(v=>trPodsSel.add(v));renderTrends()});
+const trMsCity=createMultiSelect("tr-ms-city",
+  [...new Set(S.map(s=>s.city2))].filter(Boolean).sort().map(c=>({value:c,label:c})),
+  "All cities",sel=>{trCitiesSel.clear();sel.forEach(v=>trCitiesSel.add(v));renderTrends()});
+document.getElementById("tr-view").addEventListener("change",e=>{trView=e.target.value;renderTrends()});
+document.querySelectorAll("#tr-range .tab").forEach(btn=>{
+  btn.addEventListener("click",()=>{
+    document.querySelectorAll("#tr-range .tab").forEach(b=>b.classList.remove("active"));
+    btn.classList.add("active");trRange=+btn.dataset.r;renderTrends();
+  });
+});
+function addDaysStr(dstr,n){const d=new Date(dstr+"T00:00:00Z");d.setUTCDate(d.getUTCDate()+n);return d.toISOString().slice(0,10)}
+function trQnp(podRows,from,to){
+  let tot=0,igc=0;
+  podRows.forEach(p=>{if(p.date>=from&&p.date<to){tot+=p.tot;igc+=p.igcc}});
+  return tot>0?igc/tot:null;
+}
+const AUDITED_DAILY_BY_ID=(()=>{
+  const m=new Map();
+  AUDITED_DAILY.forEach(r=>{if(!m.has(r[0]))m.set(r[0],[]);m.get(r[0]).push({date:r[1],tot:r[2],igcc:r[3]});});
+  return m;
+})();
+function renderTrends(){
+  const ids=new Set(filtered().filter(s=>s.n>0).map(s=>s.id));
+  const auditsById=new Map();
+  A.filter(a=>ids.has(a.id)&&a.score!=null).forEach(a=>{
+    if(!auditsById.has(a.id))auditsById.set(a.id,[]);
+    auditsById.get(a.id).push(a.date);});
+  const storeById=new Map(S.map(s=>[s.id,s]));
+  const rowsByPod=new Map();
+  TR_DAILY.forEach(d=>{if(!ids.has(d.id))return;
+    if(!rowsByPod.has(d.id))rowsByPod.set(d.id,[]);rowsByPod.get(d.id).push(d);});
+  // build one chart spec per audit (pod view) or per city 1st audit (city view)
+  const specs=[];
+  if(trView==="pod"){
+    const selOn=trPodsSel.size>0;
+    auditsById.forEach((dates,id)=>{
+      if(selOn&&!trPodsSel.has(id))return;
+      const s=storeById.get(id)||{};
+      if(trCitiesSel.size&&(!s.city2||!trCitiesSel.has(s.city2)))return;
+      dates.sort().forEach((dt,i)=>specs.push({key:id+"|"+i,podIds:[id],label:(s.name||("Store "+id))+" #"+id,
+        sub:(i===0?"Audit 1":"Audit "+(i+1))+" · "+(s.city2||""),auditDate:dt,rows:rowsByPod.get(id)||[],
+        audits:dates}));
+    });
+  }else{
+    const cityPods=new Map();
+    rowsByPod.forEach((rows,id)=>{
+      const c=(storeById.get(id)||{}).city2||"others";
+      if(trCitiesSel.size&&!trCitiesSel.has(c))return;
+      if(!cityPods.has(c))cityPods.set(c,[]);
+      cityPods.get(c).push(rows);
+    });
+    const cityAudits=new Map();
+    const cityPodIds=new Map();
+    auditsById.forEach((dates,id)=>{
+      const c=(storeById.get(id)||{}).city2||"others";
+      if(!cityPods.has(c))return;
+      if(!cityAudits.has(c))cityAudits.set(c,[]);
+      if(!cityPodIds.has(c))cityPodIds.set(c,[]);
+      cityPodIds.get(c).push(id);
+      dates.forEach(d=>cityAudits.get(c).push(d));
+    });
+    cityPods.forEach((rowsList,c)=>{
+      const dates=(cityAudits.get(c)||[]).sort();
+      specs.push({key:"c:"+c,podIds:cityPodIds.get(c)||[],label:c,sub:dates.length+" audits in this city",auditDate:dates[0]||null,
+        rows:[].concat(...rowsList),audits:dates.slice(0,1),allAudits:dates});
+    });
+  }
+  const kpi=(l,v,d)=>`<div class="kpi"><div class="label">${l}</div><div class="val">${v}</div><div class="delta">${d||""}</div></div>`;
+  const inBucketMode=!!trBucket;
+  // window IGCC for a spec: total mode = igcc orders ratio from pod rows;
+  // bucket mode = claims of the selected bucket ÷ FnV orders, summed over the spec's pods
+  function winQ(sp,from,to){
+    if(!inBucketMode)return trQnp(sp.rows,from,to);
+    let claims=0,tot=0;
+    sp.podIds.forEach(id=>{
+      const dm=TR_BUCKET_DAILY.get(id);
+      if(dm)dm.forEach((v,date)=>{if(date>=from&&date<to)claims+=v[trBucket]||0;});
+      (AUDITED_DAILY_BY_ID.get(id)||[]).forEach(p=>{if(p.date>=from&&p.date<to)tot+=p.tot;});
+    });
+    return tot>0?claims/tot:null;
+  }
+  // KPIs over all specs with both sides
+  let nBoth=0,sumPre=0,sumPost=0,imp=0,dec=0;
+  specs.forEach(sp=>{
+    const from=trRange>0?addDaysStr(sp.auditDate,-trRange):"0000-01-01";
+    const pre=winQ(sp,from,sp.auditDate),post=winQ(sp,sp.auditDate,trRange>0?addDaysStr(sp.auditDate,trRange+1):"9999-12-31");
+    if(pre!=null&&post!=null){nBoth++;sumPre+=pre;sumPost+=post;if(post<pre)imp++;else if(post>pre)dec++;}
+  });
+  const preAvg=nBoth?sumPre/nBoth:null,postAvg=nBoth?sumPost/nBoth:null;
+  const pp=(preAvg!=null&&postAvg!=null)?(postAvg-preAvg)*100:null;
+  document.getElementById("tr-kpis").innerHTML=
+    kpi("Charts",specs.length,nBoth+" with before+after data")+
+    kpi("Avg IGCC before",fmtPct(preAvg),trRange>0?trRange+"-day window":"all data")+
+    kpi("Avg IGCC after",fmtPct(postAvg),pp==null?"":(pp<=0?"↓ ":"↑ ")+Math.abs(pp).toFixed(2)+" pp")+
+    kpi("Improved / Declined",imp+" / "+dec,"green = IGCC reduced");
+  // charts — capped for readability
+  const W=900,H=240,PADL=56,PADR=14,PADT=16,PADB=34;
+  const shown=(trView==="pod"?specs.slice(0,9):specs);
+  let html="";
+  shown.forEach(sp=>{
+    if(!sp.auditDate)return;
+    // x window: trRange days either side of audit (or full data)
+    const lo=trRange>0?addDaysStr(sp.auditDate,-trRange):null;
+    const hi=trRange>0?addDaysStr(sp.auditDate,trRange+1):null;
+    let pts;
+    if(inBucketMode){
+      // bucket mode: one point per day = that day's bucket claims ÷ that day's FnV orders (pooled over spec pods)
+      const dayMap=new Map(); // date -> {claims,tot}
+      sp.podIds.forEach(id=>{
+        const dm=TR_BUCKET_DAILY.get(id);
+        if(dm)dm.forEach((v,date)=>{if((!lo||date>=lo)&&(!hi||date<hi)){const o=dayMap.get(date)||{claims:0,tot:0};o.claims+=v[trBucket]||0;dayMap.set(date,o);}});
+        (AUDITED_DAILY_BY_ID.get(id)||[]).forEach(p=>{if((!lo||p.date>=lo)&&(!hi||p.date<hi)){const o=dayMap.get(p.date)||{claims:0,tot:0};o.tot+=p.tot;dayMap.set(p.date,o);}});
+      });
+      pts=[...dayMap.entries()].map(([date,o])=>({date,q:o.tot>0?o.claims/o.tot:null,tot:o.tot}))
+        .sort((a,b)=>a.date<b.date?-1:1).filter(p=>p.q!=null);
+    }else{
+      pts=sp.rows.filter(p=>(!lo||p.date>=lo)&&(!hi||p.date<hi))
+        .map(p=>({date:p.date,q:p.tot>0?p.igcc/p.tot:null,tot:p.tot}))
+        .sort((a,b)=>a.date<b.date?-1:1).filter(p=>p.q!=null);
+    }
+    if(pts.length<2){return;}
+    const dLo=pts[0].date,dHi=pts[pts.length-1].date;
+    const xOf=date=>PADL+(W-PADL-PADR)*((new Date(date)-new Date(dLo))/(new Date(dHi)-new Date(dLo)||1));
+    const qMax=Math.max(...pts.map(p=>p.q))*1.2;
+    const yOf=q=>PADT+(H-PADT-PADB)*(1-q/qMax);
+    // 7-day rolling for readability
+    const sm=[];
+    for(let i=0;i<pts.length;i++){
+      const buf=pts.slice(Math.max(0,i-6),i+1);
+      let tot=0,igc=0;buf.forEach(p=>{tot+=p.tot;igc+=p.q*p.tot});
+      sm.push({date:pts[i].date,q:tot>0?igc/tot:null});
+    }
+    let seg="",started=false;
+    sm.forEach(p=>{if(p.q==null){started=false;return}
+      seg+=(started?" L":"M")+xOf(p.date).toFixed(1)+","+yOf(p.q).toFixed(1);started=true});
+    const ax=sp.auditDate>=dLo&&sp.auditDate<=dHi?xOf(sp.auditDate):null;
+    const fmtD=date=>date.slice(8,10)+"/"+date.slice(5,7);
+    const MO=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+    const fmtFull=date=>+date.slice(8,10)+" "+MO[+date.slice(5,7)-1]+" "+date.slice(0,4);
+    // before/after summary numbers for this chart
+    const pre=winQ(sp,lo||"0000-01-01",sp.auditDate),post=winQ(sp,sp.auditDate,hi||"9999-12-31");
+    const delta=(pre!=null&&post!=null)?(post-pre)*100:null;
+    html+=`<div class="card" style="box-shadow:none;margin-bottom:14px"><div class="card-head"><div><h3 style="margin:0;font-size:14px">${sp.label}${inBucketMode?' <span class="badge" style="background:'+RW_COLORS[trBucket]+'22;color:'+RW_COLORS[trBucket]+'">'+trBucket+' claims</span>':""}</h3><div class="note">${sp.sub} · audit on ${fmtFull(sp.auditDate)} · `
+      +(pre==null?"no data before":fmtPct(pre)+" before")
+      +" → "+(post==null?"no data after":fmtPct(post)+" after")
+      +(delta==null?"":` · <span class="badge ${delta<=0?"b-good":"b-bad"}">${(delta>=0?"+":"")+delta.toFixed(2)} pp</span>`)+`</div></div></div>`
+      +`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block">`
+      +(ax!=null?`<rect x="${ax}" y="${PADT}" width="${W-PADR-ax}" height="${H-PADT-PADB}" fill="#16a34a" opacity="0.06"/>`:"")
+      +[0,.5,1].map(f=>`<line x1="${PADL}" y1="${PADT+(H-PADT-PADB)*f}" x2="${W-PADR}" y2="${PADT+(H-PADT-PADB)*f}" stroke="#eef1f6"/><text x="${PADL-6}" y="${PADT+(H-PADT-PADB)*f+4}" text-anchor="end" font-size="10" fill="#8b95a7">${(qMax*(1-f)*100).toFixed(1)}%</text>`).join("")
+      +`<line x1="${PADL}" y1="${H-PADB}" x2="${W-PADR}" y2="${H-PADB}" stroke="#d7dce5"/>`
+      +pts.filter((p,i)=>i%Math.max(1,Math.ceil(pts.length/6))===0).map(p=>`<text x="${xOf(p.date)}" y="${H-PADB+16}" text-anchor="middle" font-size="10" fill="#8b95a7">${fmtD(p.date)}</text>`).join("")
+      +(ax!=null?`<rect x="${PADL}" y="${PADT}" width="${ax-PADL}" height="${H-PADT-PADB}" fill="#2563eb" opacity="0.05"/><line x1="${ax}" y1="${PADT}" x2="${ax}" y2="${H-PADB}" stroke="#dc2626" stroke-width="2" stroke-dasharray="5 3"/><text x="${ax+4}" y="${PADT+11}" font-size="11" font-weight="600" fill="#dc2626">AUDIT</text>`:"")
+      +`<path d="${seg}" fill="none" stroke="#2563eb" stroke-width="2.5" stroke-linejoin="round"/>`
+      +`</svg></div>`;
+  });
+  const skipped=specs.length-shown.length;
+  document.getElementById("tr-charts").innerHTML=html||"<div class='note'>No daily IGCC data for the current filter selection — try a wider range or different pods/cities.</div>"
+    +(skipped>0?`<div class="note">+${skipped} more not shown — use the Pod filter to pick specific pods.</div>`:"");
+}
+renderTrends();
+
+// ---------- IGCC Reason Bucketing (RCA) tab — bucket-wise IGCC before vs after audit ----------
+// RCA_WINDOWS: [storeId, auditNo, preByBucket[Pod,CX,Sourcing,WH], postByBucket[same], preFnvOrders, postFnvOrders]
+// Buckets follow the same shared-window rule as build_all_data.js (pre = win days before audit,
+// post = audit date → next audit or today). IGCC % per bucket = claims ÷ FnV orders in window.
+const RCA_COLORS={Pod:"#B0644F",CX:"#7C8798",Sourcing:"#C09A45",WH:"#5F7A6B"};
+const RCA_BUCKETS=RCA_WINDOW_BUCKETS;
+const rcaBucketSel=document.getElementById("rca-bucket"),rcaFocus=document.getElementById("rca-focus"),
+      rcaDir=document.getElementById("rca-dir");
+RCA_BUCKETS.forEach(b=>{rcaBucketSel.add(new Option(b,b));rcaFocus.add(new Option(b,b));});
+rcaBucketSel.addEventListener("change",renderRca);
+rcaFocus.addEventListener("change",renderRca);
+rcaDir.addEventListener("change",renderRca);
+let rcaSortKey="delta",rcaSortDir=-1;
+// KPI scope for the tab: the "IGCC measure" select (All claims or one bucket) drives KPIs and
+// the pod table's Δ columns; the "focus bucket" select drives the bucket and city tables.
+function rcaRowFocus(r){ // focus bucket claims/orders for one window row
+  const f=rcaFocus.value;
+  if(!f){ // all buckets: total claims = sum of bucket counts
+    let pc=0,qc=0;RCA_BUCKETS.forEach((b,i)=>{pc+=r[2][i]||0;qc+=r[3][i]||0;});
+    return {pre:pc,post:qc};
+  }
+  const i=RCA_BUCKETS.indexOf(f);
+  return {pre:r[2][i]||0,post:r[3][i]||0};
+}
+function rcaWindows(){
+  const ids=new Set(filtered().map(s=>s.id));
+  const focus=rcaFocus.value,bi=focus?RCA_BUCKETS.indexOf(focus):-1;
+  const dir=rcaDir.value;
+  return RCA_WINDOWS.filter(r=>{
+    if(!ids.has(r[0]))return false;
+    if(dir!==""){
+      const preO=r[4],postO=r[5];
+      if(!preO||!postO)return false;
+      let pc=0,qc=0;
+      if(bi>=0){pc=r[2][bi]||0;qc=r[3][bi]||0;}
+      else{RCA_BUCKETS.forEach((b,i)=>{pc+=r[2][i]||0;qc+=r[3][i]||0;});}
+      if(!pc&&!qc)return false; // 0→0 carries no direction signal
+      const fell=qc/postO<pc/preO;
+      if(dir==="down"&&!fell)return false;
+      if(dir==="up"&&fell)return false;
+    }
+    return true;
+  });
+}
+function renderRca(){
+  const kpi=(l,v,d)=>`<div class="kpi"><div class="label">${l}</div><div class="val">${v}</div><div class="delta">${d||""}</div></div>`;
+  const rows=rcaWindows();
+  const measure=rcaBucketSel.value,mi=measure?RCA_BUCKETS.indexOf(measure):-1;
+  const wins=rows.length,podsN=new Set(rows.map(r=>r[0])).size;
+  const claimsFor=(r,arrIdx)=>mi>=0?(r[arrIdx][mi]||0):RCA_BUCKETS.reduce((t,_,i)=>t+(r[arrIdx][i]||0),0);
+  // KPIs over the measured bucket
+  let preC=0,postC=0,preO=0,postO=0,both=0,down=0,noClaim=0,noPostO=0;
+  rows.forEach(r=>{
+    const pc=claimsFor(r,2),qc=claimsFor(r,3);
+    preC+=pc;postC+=qc;if(r[4])preO+=r[4];if(r[5])postO+=r[5];
+    if(!r[4]||!r[5]){noPostO++;return;}
+    if(!pc&&!qc){noClaim++;return;} // 0%→0% has no signal — not a win
+    both++;if(qc/r[5]<pc/r[4])down++;
+  });
+  const pre=preO?preC/preO:null,post=postO?postC/postO:null;
+  const pp=(pre!=null&&post!=null)?(post-pre)*100:null;
+  const MO=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  document.getElementById("rca-kpis").innerHTML=
+    kpi("Audit windows in view",wins.toLocaleString(),podsN+" pods · focus: "+(rcaFocus.value||"all buckets"))+
+    kpi((measure||"Total")+" IGCC before",fmtPct(pre),preC.toLocaleString()+" claims / "+preO.toLocaleString()+" orders")+
+    kpi((measure||"Total")+" IGCC after",fmtPct(post),pp==null?"":(pp<=0?"↓ ":"↑ ")+Math.abs(pp).toFixed(2)+" pp per order")+
+    kpi("Windows where it fell",both?down+" of "+both:"—",
+      (noClaim?noClaim+" windows had no claims · ":"")+(noPostO?noPostO+" without post orders":"audit helped = green"));
+  // bucket summary — per bucket across all windows in view
+  const bAgg=RCA_BUCKETS.map((b,i)=>{
+    let pc=0,qc=0,po=0,qo=0,both2=0,down2=0;
+    rows.forEach(r=>{
+      pc+=r[2][i]||0;qc+=r[3][i]||0;if(r[4])po+=r[4];if(r[5])qo+=r[5];
+      if(r[4]&&r[5]&&((r[2][i]||0)||(r[3][i]||0))){both2++;if((r[3][i]||0)/r[5]<(r[2][i]||0)/r[4])down2++;}
+    });
+    const p=po?pc/po:null,q=qo?qc/qo:null;
+    return {b,pc,qc,pre:p,post:q,d:(p!=null&&q!=null)?(q-p)*100:null,both:both2,down:down2};
+  });
+  const bRows=(rcaFocus.value?bAgg.filter(a=>a.b===rcaFocus.value):bAgg)
+    .slice().sort((a,b)=>(b.pc+b.qc)-(a.pc+a.qc));
+  const focusIdx=rcaFocus.value?RCA_BUCKETS.indexOf(rcaFocus.value):-1;
+  document.querySelector("#tbl-rca-bucket thead").innerHTML="<tr><th>Bucket</th><th class='num'>Claims pre</th><th class='num'>Claims post</th><th class='num'>IGCC pre %</th><th class='num'>IGCC post %</th><th class='num'>Δ (pp)</th><th class='num'>Windows ↓ / both</th></tr>";
+  document.querySelector("#tbl-rca-bucket tbody").innerHTML=bRows.map(a=>
+    `<tr><td><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${RCA_COLORS[a.b]||"#999"};margin-right:6px"></span><strong>${a.b}</strong></td>`
+    +`<td class="num">${a.pc.toLocaleString()}</td><td class="num">${a.qc.toLocaleString()}</td>`
+    +`<td class="num">${fmtPct(a.pre)}</td><td class="num">${fmtPct(a.post)}</td>`
+    +`<td class="num">${a.d==null?"—":`<span class="badge ${a.d<=0?"b-good":"b-bad"}">${(a.d>=0?"+":"")+a.d.toFixed(2)}</span>`}</td>`
+    +`<td class="num">${a.both?a.down+" / "+a.both:"—"}</td></tr>`).join("")
+    ||"<tr><td colspan='7' style='text-align:center;color:var(--ink-3)'>No audit windows in current filter</td></tr>";
+  // city × bucket — IGCC % before → after per bucket per city
+  const cityAgg=new Map(); // city -> {b: {pc,qc,po,qo}}
+  rows.forEach(r=>{
+    const s=idStore.get(r[0]);const c=(s&&s.city2)||"—";
+    if(!cityAgg.has(c))cityAgg.set(c,{});
+    const o=cityAgg.get(c);
+    RCA_BUCKETS.forEach((b,i)=>{
+      if(focusIdx>=0&&i!==focusIdx)return;
+      const cell=o[b]||(o[b]={pc:0,qc:0,po:0,qo:0});
+      cell.pc+=r[2][i]||0;cell.qc+=r[3][i]||0;cell.po+=r[4]||0;cell.qo+=r[5]||0;
+    });
+  });
+  const cityKeys=RCA_BUCKETS.filter(b=>[...cityAgg.values()].some(o=>o[b]&&(o[b].pc||o[b].qc)));
+  const cRows=[...cityAgg.entries()].map(([c,o])=>({c,o,
+    tot:Object.values(o).reduce((t,cell)=>t+cell.pc,0)})).sort((a,b)=>b.tot-a.tot);
+  document.querySelector("#tbl-rca-city thead").innerHTML="<tr><th>City</th>"
+    +cityKeys.map(b=>`<th class='num'>${b} pre → post</th>`).join("")+"</tr>";
+  document.querySelector("#tbl-rca-city tbody").innerHTML=cRows.map(r=>
+    "<tr><td>"+r.c+"</td>"+cityKeys.map(b=>{
+      const cell=r.o[b];
+      if(!cell||!(cell.pc||cell.qc))return "<td class='num'>—</td>";
+      const p=cell.po?cell.pc/cell.po:null,q=cell.qo?cell.qc/cell.qo:null;
+      const d=(p!=null&&q!=null)?(q-p)*100:null;
+      return "<td class='num'>"+fmtPct(p)+" → "+fmtPct(q)
+        +(d==null?"":` <span class="badge ${d<=0?"b-good":"b-bad"}">${(d>=0?"+":"")+d.toFixed(2)}</span>`)+"</td>";
+    }).join("")+"</tr>").join("")
+    ||`<tr><td colspan='${cityKeys.length+1}' style='text-align:center;color:var(--ink-3)'>No audit windows in current filter</td></tr>`;
+  // pod × audit detail
+  const pRows=rows.map(r=>{
+    const s=idStore.get(r[0])||{};
+    let pc=0,qc=0;
+    if(mi>=0){pc=r[2][mi]||0;qc=r[3][mi]||0;}
+    else RCA_BUCKETS.forEach((_,i)=>{pc+=r[2][i]||0;qc+=r[3][i]||0;});
+    const p=r[4]?pc/r[4]:null,q=r[5]?qc/r[5]:null;
+    return {id:r[0],no:r[1],name:s.name||("Store "+r[0]),city2:s.city2||"—",tier:s.tier||"—",
+      score:r[1]===1?s.a1s:s.a2s,winDays:(r[1]===1?s.win1d:s.win2d),
+      preC:pc,postC:qc,preO:r[4],postO:r[5],pre:p,post:q,
+      d:(p!=null&&q!=null)?(q-p)*100:null};
+  });
+  pRows.sort((a,b)=>{const av=a[rcaSortKey],bv=b[rcaSortKey];
+    if(av==null)return 1;if(bv==null)return -1;
+    if(typeof av==="string")return rcaSortDir*String(av).localeCompare(String(bv));
+    return rcaSortDir*(av-bv);});
+  const COLS_R=[
+    {k:"name",t:"Pod Name",fmt:v=>v||"—"},
+    {k:"id",t:"Pod ID",fmt:v=>"#"+v},
+    {k:"city2",t:"City",fmt:v=>v||"—"},
+    {k:"tier",t:"Tier",fmt:v=>v||"—"},
+    {k:"no",t:"Audit",num:1,fmt:v=>"A"+v},
+    {k:"score",t:"Score %",num:1,fmt:v=>v==null?"—":colorScore(v)},
+    {k:"winDays",t:"Win days",num:1,fmt:v=>v==null?"—":v},
+    {k:"preC",t:(measure||"Claims")+" pre",num:1,fmt:v=>v.toLocaleString()},
+    {k:"preO",t:"FnV orders pre",num:1,fmt:v=>v.toLocaleString()},
+    {k:"pre",t:"IGCC pre %",num:1,fmt:v=>fmtPct(v)},
+    {k:"postC",t:(measure||"Claims")+" post",num:1,fmt:v=>v.toLocaleString()},
+    {k:"postO",t:"FnV orders post",num:1,fmt:v=>v.toLocaleString()},
+    {k:"post",t:"IGCC post %",num:1,fmt:v=>fmtPct(v)},
+    {k:"d",t:"Δ (pp)",num:1,fmt:v=>v==null?"—":`<span class="badge ${v<=0?"b-good":"b-bad"}">${(v>=0?"+":"")+v.toFixed(2)}</span>`},
+  ];
+  document.querySelector("#tbl-rca-pods thead").innerHTML="<tr>"+COLS_R.map(c=>`<th data-k="${c.k}" class="${c.num?"num":""}">${c.t}</th>`).join("")+"</tr>";
+  document.querySelector("#tbl-rca-pods tbody").innerHTML=pRows.map(p=>"<tr>"+COLS_R.map(c=>
+    `<td class="${c.num?"num":""}">${c.fmt(p[c.k],p)}</td>`).join("")+"</tr>").join("")
+    ||"<tr><td colspan='"+COLS_R.length+"' style='text-align:center;color:var(--ink-3)'>No audit windows in current filter</td></tr>";
+  document.querySelectorAll("#tbl-rca-pods th").forEach(th=>th.onclick=()=>{
+    const k=th.dataset.k;if(rcaSortKey===k)rcaSortDir*=-1;else{rcaSortKey=k;rcaSortDir=-1}renderRca()});
+  document.getElementById("btn-csv-rca").onclick=()=>{
+    const head=COLS_R.map(c=>c.t);
+    const body=pRows.map(p=>COLS_R.map(c=>{
+      const v=p[c.k];
+      if(v==null)return "";
+      if(c.k==="pre"||c.k==="post")return (100*v).toFixed(3);
+      return v;}));
+    const blob=new Blob([[head].concat(body).map(r=>r.join(",")).join("\n")],{type:"text/csv"});
+    const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="rca_bucket_pre_post.csv";a.click();
+  };
+  document.getElementById("btn-csv-rca-pods").onclick=document.getElementById("btn-csv-rca").onclick;
+}
+renderRca();
+
 function renderAll(){
-  renderKpis();renderTable();renderParam();renderGroups();renderNoAudit();
+  [renderKpis,renderTable,renderBuckets,renderParam,renderNoAudit,renderOrders,renderTrends,renderRca].forEach(fn=>{
+    try{fn();}catch(e){console.error("render error in "+fn.name,e);}
+  });
   const n=applyKpiScope(filtered()).length;
   document.getElementById("f-count").textContent=`${n} pod${n===1?"":"s"} in view`+(!kpiScope?"":" · KPI filter: "+kpiScope+" (click card again to clear)");
 }
