@@ -339,12 +339,42 @@ tr:hover td{background:#F7F9F8}
 
 <div class="footer-note">Windows: the days between two audits form ONE shared window used for both "IGCC post" of the earlier audit and "IGCC pre" of the later audit — so post 1 and pre 2 are always the same % (e.g. audits on Sep 1 and Sep 13 → pre 1 = Aug 20–31, the shared Sep 2–12 window gives post 1 AND pre 2, post 2 = Sep 13 → today). Pre of the 1st audit = same number of days before it as the gap to the next audit. 7 days for pods with a single audit or no audit. The "Win days" / "Window days" columns show the days used. QNP = IGCC orders ÷ total FnV orders. Score % = overall pod audit score. FNV% = FnV-section compliance.</div>
 
-<script src="dashboard_data.js"></script>
-<script src="param_data.js"></script>
-<script src="unaudited_data.js"></script>
-<script src="orders_data.js"></script>
-<script src="rca_data.js"></script>
-<script src="rca_windows_data.js"></script>
+<script src="dashboard_data.js?v=20261007"></script>
+<script src="param_data.js?v=20261007"></script>
+<script src="unaudited_data.js?v=20261007"></script>
+<script src="orders_data.js?v=20261007"></script>
+<script src="rca_data.js?v=20261007"></script>
+<script src="rca_windows_data.js?v=20261007"></script>
+<script>
+// Tab wiring lives in its own block, before any data processing: if a data file is stale or
+// missing and the main script throws, tab switching must still work so each tab shows only
+// its own section.
+(function(){
+  function safe(fn){ try{ if(typeof fn==="function") fn(); }catch(e){ console.error("render error",e); } }
+  if(typeof STORES==="undefined"||typeof AUDITS==="undefined"){
+    const m=document.getElementById("db-meta");
+    if(m) m.textContent="⚠ Dashboard data failed to load — press Ctrl+F5 to refresh.";
+  }
+  document.querySelectorAll("#section-tabs .tab").forEach(btn=>{
+    btn.addEventListener("click",()=>{
+      document.querySelectorAll("#section-tabs .tab").forEach(b=>b.classList.remove("active"));
+      btn.classList.add("active");
+      document.getElementById("sec-detail").hidden=btn.dataset.tab!=="sec-detail";
+      document.getElementById("sec-param").hidden=btn.dataset.tab!=="sec-param";
+      document.getElementById("sec-noaudit").hidden=btn.dataset.tab!=="sec-noaudit";
+      document.getElementById("sec-orders").hidden=btn.dataset.tab!=="sec-orders";
+      document.getElementById("sec-trends").hidden=btn.dataset.tab!=="sec-trends";
+      document.getElementById("sec-rca").hidden=btn.dataset.tab!=="sec-rca";
+      window.scrollTo({top:0});
+      if(btn.dataset.tab==="sec-param")safe(renderParam);
+      if(btn.dataset.tab==="sec-noaudit")safe(renderNoAudit);
+      if(btn.dataset.tab==="sec-orders")safe(renderOrders);
+      if(btn.dataset.tab==="sec-trends")safe(renderTrends);
+      if(btn.dataset.tab==="sec-rca")safe(renderRca);
+    });
+  });
+})();
+</script>
 <script>
 // STORES: [id, name, city, city2, tier, n, a1d, a1s, a1f, a2s, a2f, a1pre, a1post, a2pre, a2post, win1d, win2d]
 // AUDITS: [id, no, date, city, auditor, score, fnv, pre, post, preOrd, postOrd, winDays]
@@ -614,24 +644,7 @@ function renderBuckets(){
   }).join("")||"<tr><td colspan='6' style='text-align:center;color:var(--ink-3)'>No audited pods in current filter</td></tr>";
 }
 
-// ---------- section tabs ----------
-document.querySelectorAll("#section-tabs .tab").forEach(btn=>{
-  btn.addEventListener("click",()=>{
-    document.querySelectorAll("#section-tabs .tab").forEach(b=>b.classList.remove("active"));
-    btn.classList.add("active");
-    document.getElementById("sec-detail").hidden=btn.dataset.tab!=="sec-detail";
-    document.getElementById("sec-param").hidden=btn.dataset.tab!=="sec-param";
-    document.getElementById("sec-noaudit").hidden=btn.dataset.tab!=="sec-noaudit";
-    document.getElementById("sec-orders").hidden=btn.dataset.tab!=="sec-orders";
-    document.getElementById("sec-trends").hidden=btn.dataset.tab!=="sec-trends";
-    document.getElementById("sec-rca").hidden=btn.dataset.tab!=="sec-rca";
-    if(btn.dataset.tab==="sec-param")renderParam();
-    if(btn.dataset.tab==="sec-noaudit")renderNoAudit();
-    if(btn.dataset.tab==="sec-orders")renderOrders();
-    if(btn.dataset.tab==="sec-trends")renderTrends();
-    if(btn.dataset.tab==="sec-rca")renderRca();
-  });
-});
+// tab wiring is in the dedicated block right after the data <script> tags (survives data errors)
 
 // ---------- parameter-wise analysis ----------
 const SCORE_LBL={0:"Non-Compliance",1:"Partially Complied",2:"Compliance"};

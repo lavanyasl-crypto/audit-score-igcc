@@ -43,13 +43,19 @@ const audRaw = [];
     const p = parseCSVLine(lines[i]);
     const id = parseInt(p[idx['Store ID']], 10);
     const date = (p[idx['Date']] || '').trim();
-    const score = parseFloat(p[idx['Score %']]);
-    if (!Number.isFinite(id) || !/^\d{4}-\d{2}-\d{2}$/.test(date) || !Number.isFinite(score)) continue;
-    const row = { id, date, score, city: p[idx['City']], auditor: p[idx['Auditor Name']], name: p[idx['Store Name']] };
+    if (!Number.isFinite(id) || !/^\d{4}-\d{2}-\d{2}$/.test(date)) continue;
+    const row = { id, date, score: parseFloat(p[idx['Score %']]), city: p[idx['City']], auditor: p[idx['Auditor Name']], name: p[idx['Store Name']] };
     row.scores = hdr.map((h, j) => (h.endsWith(' (Score)') ? j : -1)).filter(j => j >= 0).map(j => {
       const v = parseInt(p[j], 10);
       return Number.isFinite(v) ? v : null;
     });
+    // early audits (Aug 31–Sep 3, older form version) have no Score % —
+    // backfill as sum of per-question scores / (answered questions × 2)
+    if (!Number.isFinite(row.score)) {
+      const vals = row.scores.filter(v => v != null);
+      row.score = vals.length ? Math.round(100 * vals.reduce((a, b) => a + b, 0) / (vals.length * 2)) : null;
+    }
+    if (!Number.isFinite(row.score)) continue;
     row.scoreCols = hdr.map((h, j) => (h.endsWith(' (Score)') ? h : null)).filter(Boolean);
     audRaw.push(row);
   }
