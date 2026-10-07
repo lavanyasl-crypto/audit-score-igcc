@@ -8,7 +8,7 @@ const fs = require('fs');
 const path = require('path');
 const ROOT = __dirname;
 
-const BUCKET_CSV = path.join(ROOT, 'IGCC bucketing', 'Bucketing', 'IGCC Daily RCA - Bucketing v2 (1).csv');
+const BUCKET_CSV = path.join(ROOT, 'IGCC bucketing', 'Bucketing', 'IGCC Daily RCA - Bucketing v2.csv');
 const REASONS_CSV = path.join(ROOT, 'IGCC bucketing', 'Igcc reasons', 'IGCC Daily RCA - IGCC_REAONS.csv');
 const OUT = path.join(ROOT, 'rca_data.js');
 

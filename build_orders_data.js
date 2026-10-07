@@ -1,7 +1,7 @@
 // Builds orders_data.js for the "Total Orders vs Audits" tab.
-// Sources (updated 2026-10-06):
+// Sources (updated 2026-10-07):
 //   Store IGCC/IGCC _Daily Summary - Orders.csv             — store-level ALL-category orders (2026-09-19 → 09-28)
-//   Store IGCC/IGCC _Daily Summary - Store inc.csv          — store-level FnV orders + IGCC (2026-05-01 → 10-05)
+//   Store IGCC/IGCC _Daily Summary - Store inc.csv          — store-level FnV orders + IGCC (2026-05-01 → 10-06)
 //   dashboard_data.js  (STORES / AUDITS / DAILY)            — audits + pre/post IGCC windows
 //   per_audit_igcc.csv                                      — audit-level pre/post QNP + FnV orders
 const fs = require('fs');
@@ -53,7 +53,7 @@ const fnvDaily = new Map(); // store_id -> { isoDate: {tot, igcc, city, city2, t
 // post window runs from the audit date to the date of viewing (TODAY); single
 // audits use 7 days. Orders.csv only covers 2026-09-19..09-28, so a window may be
 // partial → also report covered days.
-const TODAY = '2026-10-06';
+const TODAY = '2026-10-07';
 function windowTotalOrders(id, auditDate, gapDays, isLast) {
   const m = totalOrders.get(id);
   if (!m) return null;

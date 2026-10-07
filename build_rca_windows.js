@@ -9,7 +9,7 @@ const vm = require('vm');
 const ROOT = __dirname;
 
 const PER_AUDIT = path.join(ROOT, 'per_audit_igcc.csv');
-const BUCKET_CSV = path.join(ROOT, 'IGCC bucketing', 'Bucketing', 'IGCC Daily RCA - Bucketing v2 (1).csv');
+const BUCKET_CSV = path.join(ROOT, 'IGCC bucketing', 'Bucketing', 'IGCC Daily RCA - Bucketing v2.csv');
 const REASONS_CSV = path.join(ROOT, 'IGCC bucketing', 'Igcc reasons', 'IGCC Daily RCA - IGCC_REAONS.csv');
 
 function parseCSVLine(line) {

@@ -1,13 +1,13 @@
 // Consolidated Node port of analysis.py + build_dashboard_data.py + build_param_data.py +
 // build_unaudited_data.js.py — rebuilds all dashboard data files from the updated CSVs.
-// Sources (updated 2026-10-06):
-//   Audit response wide/Pod Audit Tool - Audit Responses (Wide) (1).csv   (audits 2026-08-31 → 10-06)
-//   Store IGCC/IGCC _Daily Summary - Store inc.csv                        (daily FnV orders+IGCC, 2026-05-01 → 10-05)
+// Sources (updated 2026-10-07):
+//   Audit response wide/Pod Audit Tool - Audit Responses (Wide) (2).csv   (audits 2026-08-31 → 10-07)
+//   Store IGCC/IGCC _Daily Summary - Store inc.csv                        (daily FnV orders+IGCC, 2026-05-01 → 10-06)
 const fs = require('fs');
 const path = require('path');
 const ROOT = __dirname;
 
-const WIDE = path.join(ROOT, 'Audit response wide', 'Pod Audit Tool - Audit Responses (Wide) (1).csv');
+const WIDE = path.join(ROOT, 'Audit response wide', 'Pod Audit Tool - Audit Responses (Wide) (2).csv');
 const IGCC = path.join(ROOT, 'Store IGCC', 'IGCC _Daily Summary - Store inc.csv');
 const PER_AUDIT = path.join(ROOT, 'per_audit_igcc.csv');
 const WINDOW_DAYS = 7; // fallback window for single-audit / unaudited pods
@@ -115,7 +115,7 @@ audRaw.forEach(a => {
 byStore.forEach(arr => arr.sort((x, y) => x.date < y.date ? -1 : 1));
 
 // "today" for stretching the last audit's window — day after max IGCC data date (data runs to 2026-10-05)
-const TODAY = '2026-10-06';
+const TODAY = '2026-10-07';
 
 // ---------- per-audit IGCC windows ----------
 const perAudit = [];
